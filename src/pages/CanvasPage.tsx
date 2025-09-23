@@ -6,12 +6,11 @@ import { ToolOptions } from "../features/canvas/components/ToolOptions";
 import { HistoryButtons } from "../features/canvas/components/HistoryButtons";
 import { ShareCanvas } from "../features/canvas/components/ShareCanvas";
 import { useAuth } from "../features/auth/AuthProvider";
-import apiClient from "../lib/apiClient";
-import { apiRoutes } from "../lib/apiRoutes";
 import { Permissions } from "../types/permission";
 import { CanvasList } from "../features/canvas/components/CanvasList";
 import { UserInfo } from "../features/canvas/components/UserInfo";
 import { getUUID } from "../utils/utils";
+import { useSignalR } from "../features/auth/ProtectedRoute";
 
 export const CanvasWrapper = () => {
   const { roomId } = useParams();
@@ -32,45 +31,56 @@ export const CanvasWrapper = () => {
 }
 
 function CanvasPage({ roomId }: { roomId: string }) {
-  const { user, guest } = useAuth();
-
   const [permission, setPermission] = useState<Permissions>();
 
-  const fetchPermissions = async () => {
-    if (!roomId || !user?.email) return;
-
-    if (guest) return;
-
-    try {
-      const response = await apiClient.get(apiRoutes.permission.getByRoom(roomId));
-      const data: Permissions[] = response.data;
-
-      // Find permission for the current user
-      const myPermission = data.find(p => p.userEmail === user.email);
-      if (myPermission) {
-        setPermission(myPermission);
-        //console.log("OUR ROLE IS", myPermission.role);
-      }
-    } catch (err: any) {
-      console.error("Fetch permissions failed", err);
-    }
-  };
+  const { connection } = useSignalR();
 
   useEffect(() => {
-    if (!roomId) return;
+    let isMounted = true;
 
-    fetchPermissions();
+    const loadPermissions = async () => {
+      while (isMounted && (!roomId || !connection)) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      if (!isMounted || !connection || !roomId) return;
 
-    const intervalId = setInterval(() => {
-      fetchPermissions();
-    }, 5000);
+      while (isMounted && connection.state !== "Connected") {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      if (!isMounted) return;
+
+      try {
+        const roomPerm = await connection.invoke<Permissions>("GetPermission", roomId);
+        if (isMounted && roomPerm) {
+          setPermission(roomPerm);
+          console.log("Permissions loaded:", roomPerm);
+        }
+      } catch (err) {
+        console.error("Failed to load permissions:", err);
+      }
+    };
+
+    loadPermissions();
 
     return () => {
-      clearInterval(intervalId);
+      isMounted = false;
     };
-  }, [roomId]);
+  }, [roomId, connection]);
 
   if (!roomId) return null;
+
+  if (permission == null) {
+    return(
+    <>
+      <CanvasList />
+      <UserInfo />
+      <div className="flex h-screen w-screen justify-center items-center bg-neutral-950">
+        <h1 className="text-white text-2xl select-none">This room does not exist.</h1>
+      </div>
+    </>
+    )
+  }
 
   return (
     <>

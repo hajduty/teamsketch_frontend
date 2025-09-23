@@ -1,5 +1,6 @@
 export interface Permissions {
-    userEmail: string;
-    roomId: string;
+    userId: string;
+    room: string;
     role: string;
+    userEmail: string;
 }

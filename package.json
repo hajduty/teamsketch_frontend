@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@microsoft/signalr": "^9.0.6",
     "@tailwindcss/vite": "^4.0.6",
     "axios": "^1.9.0",
     "fit-curve": "^0.2.0",

@@ -30,7 +30,7 @@ const Register: React.FC = () => {
     }
   };
 
-  const handleGuestLogin = async (e: React.FormEvent) => {
+/*   const handleGuestLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
@@ -43,7 +43,7 @@ const Register: React.FC = () => {
       console.error('Login failed', err);
       setError(true);
     }
-  }
+  } */
 
   return (
     <div className="flex h-screen md:flex-row flex-col">
@@ -106,13 +106,13 @@ const Register: React.FC = () => {
             <div className="border-t border-neutral-700 w-1/3"></div>
           </div>
 
-          <button
+{/*           <button
             className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
             type="button"
             onClick={handleGuestLogin}
           >
             Continue as guest
-          </button>
+          </button> */}
         </form>
       </div>
 

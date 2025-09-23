@@ -18,19 +18,26 @@
   backface-visibility: hidden;
 }
 
-.scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: #4b5563 transparent;
-}
-
 .scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
+  width: 7px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent; /* or whatever color you want */
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: #4b5563;
-  border-radius: 3px;
+  background-color: oklch(37.1% 0 0);
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(42.1% 0 0);
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-button {
+  display: none; /* should hide triangles */
+  width: 0;
+  height: 0;
 }

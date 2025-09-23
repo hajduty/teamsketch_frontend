@@ -28,6 +28,7 @@ const SignIn: React.FC = () => {
       login(response.data.token, response.data.user);
 
       const from = location.state?.from?.pathname;
+      
       console.log(from);
       if (from) {
         navigate(from);
@@ -41,12 +42,12 @@ const SignIn: React.FC = () => {
     }
   };
 
-  const handleGuestLogin = async (e: React.FormEvent) => {
+/*   const handleGuestLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       const email = getUUID();
-      const id = getUUID();
+      const id = ;
 
       const user: User = { email, id };
       setGuest(true);
@@ -65,7 +66,7 @@ const SignIn: React.FC = () => {
       console.error("Guest login failed", err);
       setError(true);
     }
-  };
+  }; */
 
   return (
     <div className="flex h-screen md:flex-row flex-col">
@@ -127,13 +128,13 @@ const SignIn: React.FC = () => {
             <div className="border-t border-neutral-700 w-1/3"></div>
           </div>
 
-          <button
+{/*           <button
             className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
             type="button"
             onClick={handleGuestLogin}
           >
             Continue as guest
-          </button>
+          </button> */}
         </form>
       </div>
 

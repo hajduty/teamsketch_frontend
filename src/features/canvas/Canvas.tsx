@@ -84,7 +84,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
       await initCanvasStore(ydoc, yObjects, undoManager);
 
       if (guest) {
-        const room: Permissions = { role: "editor", roomId: roomId, userEmail: user!.email };
+        const room: Permissions = { role: "editor", room: roomId, userId: user?.id!, userEmail: user?.email! };
         addGuestRoom(room);
       }
     };
@@ -139,7 +139,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     const roomName = roomId;
 
     providerRef.current = new WebsocketProvider(
-      `${wsUrl}/Room/collaboration/${roomName}/${token}`,
+      `${wsUrl}/${roomName}/${token}`,
       "",
       ydoc
     );

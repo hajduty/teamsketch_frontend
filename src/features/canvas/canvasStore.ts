@@ -80,7 +80,7 @@ export const useCanvasStore = create<CanvasStore>(
     addGuestRoom: (newRoom) => {
       const currentRooms = get().guestRooms;
 
-      const alreadyExists = currentRooms.some((room) => room.roomId === newRoom.roomId);
+      const alreadyExists = currentRooms.some((room) => room.room === newRoom.room);
       if (alreadyExists) return;
 
       const updatedRooms = [...currentRooms, newRoom];

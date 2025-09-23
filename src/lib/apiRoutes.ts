@@ -1,18 +1,20 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://localhost:5001/api";
+const AUTH_URL = import.meta.env.VITE_API_AUTH_URL || "https://localhost:7154/api/";
+const PERMISSION_URL = import.meta.env.VITE_API_PERMISSION_URL || "https://localhost:7122/api";
+const ROOM_URL = import.meta.env.VITE_API_ROOM_URL || "https://localhost:5001/api";
 
 export const apiRoutes = {
   auth: {
-    login: `${BASE_URL}/auth/login`,
-    register: `${BASE_URL}/auth/register`,
+    login: `${AUTH_URL}/Auth/login`,
+    register: `${AUTH_URL}/Auth/register`,
   },
   room: {
-    collaboration: (roomName: string) => `${BASE_URL}/room/collaboration/${roomName}`,
+    collaboration: (roomName: string) => `${ROOM_URL}/room/collaboration/${roomName}`,
   },
   permission: {
-    add: `${BASE_URL}/room/permission`,
-    remove: `${BASE_URL}/room/permission`,
-    edit: `${BASE_URL}/room/permission`,
-    getByRoom: (roomId: string) => `${BASE_URL}/room/permission/${roomId}`,
-    getMyRooms: `${BASE_URL}/room/permission`
+    add: `${PERMISSION_URL}/permission`,
+    remove: `${PERMISSION_URL}/permission`,
+    edit: `${PERMISSION_URL}/permission`,
+    getByRoom: (roomId: string) => `${PERMISSION_URL}/room/permission/${roomId}`,
+    getMyRooms: `${PERMISSION_URL}/room/permission`
   }
 };

@@ -4,12 +4,8 @@ import Icon from "../../../components/Icon";
 import { apiRoutes } from "../../../lib/apiRoutes";
 import apiClient from "../../../lib/apiClient";
 import { useAuth } from "../../auth/AuthProvider";
-
-interface Permission {
-  userEmail: string;
-  role: string;
-  roomId: string;
-}
+import { useSignalR } from "../../auth/ProtectedRoute";
+import { Permissions } from "../../../types/permission";
 
 const GuestView = ({ roomId, onClose, isVisible }: {
   roomId: string; onClose: () => void, isVisible: boolean;
@@ -62,10 +58,11 @@ const GuestView = ({ roomId, onClose, isVisible }: {
 
 export const ShareCanvas = ({ roomId }: { roomId: any }) => {
   const { guest } = useAuth();
+  const { connection } = useSignalR();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string>("");
   const [selectedRole, setSelectedRole] = useState<string>("viewer");
-  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [permissions, setPermissions] = useState<Permissions[]>([]);
   const [error, setError] = useState<string>("");
   const [successMessage, setSuccessMessage] = useState<string>("");
   const [isAccordionOpen, setIsAccordionOpen] = useState<boolean>(false);
@@ -73,19 +70,22 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
 
 
   const fetchPermissions = async () => {
-    if (!roomId) return;
-    try {
-      const response = await apiClient.get(apiRoutes.permission.getByRoom(roomId));
-      setPermissions(response.data);
-      setError("");
-    } catch (err: any) {
-      console.error("Fetch permissions failed", err);
-      setError("Failed to fetch permissions");
+    while (!connection || connection.state !== "Connected") {
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
-  };
 
-  const updateUserRole = async (userEmail: string, newRole: string) => {
-    const permissionToUpdate = permissions.find((p) => p.userEmail === userEmail);
+    if (!connection) return;
+
+    try {
+      const response = await connection.invoke<Permissions[]>("GetPermissionsForRoom", roomId);
+      setPermissions(response);
+    } catch (err: any) {
+      console.error("Failed to fetch rooms", err);
+    }
+  }
+
+  const updateUserRole = async (userId: string, newRole: string) => {
+    const permissionToUpdate = permissions.find((p) => p.userId === userId);
     if (!permissionToUpdate) return;
 
     const updatedPermission = { ...permissionToUpdate, role: newRole };
@@ -94,7 +94,7 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
       await apiClient.put(apiRoutes.permission.edit, updatedPermission);
       setPermissions((prev) =>
         prev.map((p) =>
-          p.userEmail === userEmail ? { ...p, role: newRole } : p
+          p.userId === userId ? { ...p, role: newRole } : p
         )
       );
     } catch (err: any) {
@@ -106,9 +106,10 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
   const addUser = async () => {
     if (!userEmail || !roomId) return;
     try {
+      var room = roomId;
       await apiClient.post(apiRoutes.permission.add, {
         userEmail,
-        roomId,
+        room,
         role: selectedRole,
       });
       setUserEmail("");
@@ -120,11 +121,11 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
     }
   };
 
-  const deleteUser = async (permission: Permission) => {
+  const deleteUser = async (permission: Permissions) => {
     try {
       await apiClient.delete(apiRoutes.permission.remove, { data: permission });
       setPermissions((prev) =>
-        prev.filter((p) => p.userEmail !== permission.userEmail)
+        prev.filter((p) => p.userId !== permission.userId)
       );
     } catch (err: any) {
       console.error("Delete user failed", err);
@@ -264,19 +265,19 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
                   <ul className="text-sm">
                     {permissions.map((perm) => (
                       <li
-                        key={perm.userEmail}
+                        key={perm.userId}
                         className="flex justify-between items-center border rounded-sm p-2 border-neutral-700 my-3"
                       >
                         <span className="flex gap-2 items-center">
                           {perm.role != "owner"
-                            ? perm.userEmail
-                            : `${perm.userEmail} (Owner)`}
+                            ? perm.userId
+                            : `${perm.userId} (Owner)`}
 
                           {perm.role != "owner" && (
                             <select
                               value={perm.role}
                               onChange={(e) =>
-                                updateUserRole(perm.userEmail, e.target.value)
+                                updateUserRole(perm.userId, e.target.value)
                               }
                               className="bg-neutral-800 border border-neutral-600 text-white rounded px-2 py-1 text-sm"
                             >
