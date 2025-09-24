@@ -3,4 +3,5 @@ export interface Permissions {
     room: string;
     role: string;
     userEmail: string;
+    createdAt?: Date;
 }
