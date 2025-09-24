@@ -84,8 +84,8 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
     }
   }
 
-  const updateUserRole = async (userId: string, newRole: string) => {
-    const permissionToUpdate = permissions.find((p) => p.userId === userId);
+  const updateUserRole = async (userEmail: string, newRole: string) => {
+    const permissionToUpdate = permissions.find((p) => p.userEmail === userEmail);
     if (!permissionToUpdate) return;
 
     const updatedPermission = { ...permissionToUpdate, role: newRole };
@@ -94,7 +94,7 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
       await apiClient.put(apiRoutes.permission.edit, updatedPermission);
       setPermissions((prev) =>
         prev.map((p) =>
-          p.userId === userId ? { ...p, role: newRole } : p
+          p.userEmail === userEmail ? { ...p, role: newRole } : p
         )
       );
     } catch (err: any) {
@@ -110,7 +110,7 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
       await apiClient.post(apiRoutes.permission.add, {
         userEmail,
         room,
-        role: selectedRole,
+        role: selectedRole
       });
       setUserEmail("");
       setSuccessMessage("All done! Send this link to your friend:");
@@ -125,7 +125,7 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
     try {
       await apiClient.delete(apiRoutes.permission.remove, { data: permission });
       setPermissions((prev) =>
-        prev.filter((p) => p.userId !== permission.userId)
+        prev.filter((p) => p.userEmail !== permission.userEmail)
       );
     } catch (err: any) {
       console.error("Delete user failed", err);
@@ -265,19 +265,19 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
                   <ul className="text-sm">
                     {permissions.map((perm) => (
                       <li
-                        key={perm.userId}
+                        key={perm.userEmail}
                         className="flex justify-between items-center border rounded-sm p-2 border-neutral-700 my-3"
                       >
                         <span className="flex gap-2 items-center">
-                          {perm.role != "owner"
-                            ? perm.userId
-                            : `${perm.userId} (Owner)`}
+                          {perm.role != "Owner"
+                            ? perm.userEmail
+                            : `${perm.userEmail} (Owner)`}
 
-                          {perm.role != "owner" && (
+                          {perm.role != "Owner" && (
                             <select
                               value={perm.role}
                               onChange={(e) =>
-                                updateUserRole(perm.userId, e.target.value)
+                                updateUserRole(perm.userEmail, e.target.value)
                               }
                               className="bg-neutral-800 border border-neutral-600 text-white rounded px-2 py-1 text-sm"
                             >
@@ -287,7 +287,7 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
                           )}
                         </span>
 
-                        {perm.role != "owner" && (
+                        {perm.role != "Owner" && (
                           <button
                             onClick={() => deleteUser(perm)}
                             className="border-neutral-700 border hover:bg-neutral-800 flex rounded-sm px-1 py-1 text-sm transition duration-75"

@@ -41,9 +41,9 @@ const ProtectedRoute: React.FC = () => {
       try {
         await conn.start();
         setIsConnected(true);
-        console.log("✅ SignalR connected");
+        console.log("SignalR connected");
       } catch (err) {
-        console.error("❌ SignalR connection failed:", err);
+        console.error("SignalR connection failed:", err);
         setTimeout(start, 5000);
       }
     };
@@ -53,7 +53,7 @@ const ProtectedRoute: React.FC = () => {
     return () => {
       conn.stop();
       setIsConnected(false);
-      console.log("🔌 SignalR disconnected");
+      console.log("SignalR disconnected");
     };
   }, [authenticated, token]);
 

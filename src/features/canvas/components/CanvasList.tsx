@@ -90,20 +90,21 @@ export const CanvasList = () => {
                 ) : (
                   <ul className="space-y-2 max-h-96 overflow-auto scrollbar-thin pr-1 pl-2">
                     <NewRoomButton createNewRoom={createNewRoom} cooldownMs={1000} />
-                    {rooms.map((perm) => (
+                    {rooms.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+                    .map((perm) => (
                       <li
                         key={perm.room}
                         className="flex justify-between items-center border border-neutral-700 rounded p-2 hover:bg-neutral-800 transition"
                       >
                         <div className="flex flex-col min-w-0 flex-1 mr-2">
-                          <span className="font-medium text-sm break-all">
+                          <span className="text-sm break-all select-none text-neutral-400">
                             Room ID:
                           </span>
                           <span className="font-medium text-sm break-all">
                             {perm.room}
                           </span>
                           <span className="text-sm text-neutral-400">
-                            Role: {perm.role}
+                            {perm.role}
                           </span>
                         </div>
                         <button
