@@ -1,36 +1,37 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface NewRoomButtonProps {
-  createNewRoom: () => Promise<void>;
+  createNewRoom: () => Promise<string | undefined>;
   cooldownMs?: number;
+  creating: boolean;
 }
 
-export function NewRoomButton({ createNewRoom, cooldownMs = 800 }: NewRoomButtonProps) {
-  const [creating, setCreating] = useState(false);
-  const [cooldown, setCooldown] = useState(false);
+export function NewRoomButton({ createNewRoom, cooldownMs = 200, creating }: NewRoomButtonProps) {
+  const navigate = useNavigate();
+  const [created, setCreated] = useState(false);
 
   const handleClick = async () => {
-    setCreating(true);
-    try {
-      await createNewRoom();
-    } finally {
-      setCreating(false);
-      setCooldown(true);
-      setTimeout(() => setCooldown(false), cooldownMs);
+    const roomId = await createNewRoom();
+
+    if (roomId) {
+      setCreated(true);
+      setTimeout(() => {
+        setCreated(false);
+        navigate(`/${roomId}`);
+      }, cooldownMs);
     }
   };
-
-  const isBusy = creating || cooldown;
 
   return (
     <button
       onClick={handleClick}
-      disabled={isBusy}
-      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 transition duration-75 rounded px-3 py-1 text-sm font-medium disabled:bg-gray-600 disabled:hover:bg-gray-600"
+      disabled={creating}
+      className={`${created ? "bg-green-600 hover:bg-green-500" : "bg-blue-600 hover:bg-blue-500"} w-full flex items-center justify-center gap-2 transition-colors duration-300 rounded px-3 py-1 text-sm font-medium disabled:bg-gray-600 disabled:hover:bg-gray-600`}
     >
-      {isBusy && (
+      {creating && (
         <svg
-          className="h-4 w-4 text-white slow-spin"
+          className="h-4 w-4 text-white animate-spin"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
@@ -50,7 +51,11 @@ export function NewRoomButton({ createNewRoom, cooldownMs = 800 }: NewRoomButton
           />
         </svg>
       )}
-      {isBusy ? "Creating..." : "New room"}
+      {creating
+        ? "Creating..."
+        : created
+          ? "Created!"
+          : "New room"}
     </button>
   );
 }

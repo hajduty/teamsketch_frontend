@@ -73,7 +73,7 @@ function CanvasPage({ roomId }: { roomId: string }) {
   if (permission == null) {
     return(
     <>
-      <CanvasList />
+      <CanvasList roomId={roomId!}/>
       <UserInfo />
       <div className="flex h-screen w-screen justify-center items-center bg-neutral-950">
         <h1 className="text-white text-2xl select-none">This room does not exist.</h1>
@@ -95,7 +95,7 @@ function CanvasPage({ roomId }: { roomId: string }) {
         <UserInfo />
       </>
       }
-      <CanvasList />
+      <CanvasList roomId={roomId!}/>
     </>
   );
 }
