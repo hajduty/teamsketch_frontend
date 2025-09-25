@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import apiClient from "../../../lib/apiClient";
 import { apiRoutes } from "../../../lib/apiRoutes";
 import Icon from "../../../components/Icon";
@@ -10,7 +10,9 @@ import { NewRoomButton } from "../../../components/NewRoomButton";
 import { useSignalR } from "../../auth/ProtectedRoute";
 import { Permissions } from "../../../types/permission";
 
-export const CanvasList = () => {
+var cooldownMs = 1000;
+
+export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
   const navigate = useNavigate();
   const { guest, user } = useAuth();
   const { guestRooms } = useCanvasStore();
@@ -55,9 +57,12 @@ export const CanvasList = () => {
       console.log("Generated UUID:", uuid);
       var permission: Permissions = { role: "Owner", room: uuid, userId: user?.id!, userEmail: user?.email! }
       const response = await apiClient.post(apiRoutes.permission.add, permission);
-      var room = response.data;
-      setRooms(prev => [...prev, room]);
+      var room: Permissions = response.data;
+      setTimeout(() => {
+        setRooms(prev => [...prev, room]);
+      }, cooldownMs);
       setCreating(false);
+      return room.room;
     } catch (err: any) {
       setCreating(false);
     }
@@ -85,16 +90,16 @@ export const CanvasList = () => {
                   }`}>
                 {/* New Room Button */}
                 {rooms.length === 0 ? (<>
-                  <NewRoomButton createNewRoom={createNewRoom} cooldownMs={1000} />
+                  <NewRoomButton createNewRoom={createNewRoom} creating={creating} cooldownMs={cooldownMs} />
                 </>
                 ) : (
                   <ul className="space-y-2 max-h-96 overflow-auto scrollbar-thin pr-1 pl-2">
-                    <NewRoomButton createNewRoom={createNewRoom} cooldownMs={1000} />
+                    <NewRoomButton createNewRoom={createNewRoom} creating={creating} cooldownMs={cooldownMs} />
                     {rooms.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
                     .map((perm) => (
                       <li
                         key={perm.room}
-                        className="flex justify-between items-center border border-neutral-700 rounded p-2 hover:bg-neutral-800 transition"
+                        className={`flex justify-between items-center border border-neutral-700 rounded p-2 hover:bg-neutral-800 transition ${perm.room == roomId ? "bg-neutral-900" : ""}`}
                       >
                         <div className="flex flex-col min-w-0 flex-1 mr-2">
                           <span className="text-sm break-all select-none text-neutral-400">
