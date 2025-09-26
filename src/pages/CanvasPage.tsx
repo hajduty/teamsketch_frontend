@@ -90,7 +90,7 @@ function CanvasPage({ roomId }: { roomId: string }) {
       {permission?.role != "viewer" && <>
         <HistoryButtons />
         <Toolbar />
-        <ToolOptions />
+        <ToolOptions roomId={roomId!}/>
         <ShareCanvas roomId={roomId!} />
         <UserInfo />
       </>

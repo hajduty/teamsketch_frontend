@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
 
-export const Color = ({ className, onChange }: { className?: string, onChange?: (value: string) => void; }) => {
+export const Color = ({ className, onChange, value }: { className?: string, onChange?: (value: string) => void, value: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [color, setColor] = useState("#aabbcc");
+  const [color, setColor] = useState(value);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

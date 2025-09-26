@@ -1,18 +1,22 @@
 import React from "react";
 import { FC, JSX, useEffect, useState } from "react";
 import { Layer, Rect } from "react-konva";
+import { useCanvasStore } from "../canvasStore";
 
 interface GridProps {
   stageRef: any;
+  roomId: string;
 }
 
 const BASE_WIDTH = 200;
 const BASE_HEIGHT = 200;
 const CELL_LIMIT = 500;
 
-const grid = [["#111111", "#111111"], ["#111111", "#111111"]];
+const InfiniteGrid: FC<GridProps> = ({ stageRef, roomId }) => {
+  const backgroundColor = useCanvasStore(state => state.stageStates[roomId]?.backgroundColor) ?? "#111111";
+  const borderColor = useCanvasStore(state => state.stageStates[roomId]?.borderColor) ?? "#333333";
 
-const InfiniteGrid: FC<GridProps> = ({ stageRef }) => {
+  const grid = [[backgroundColor, backgroundColor], [backgroundColor, backgroundColor]];
   const [gridCells, setGridCells] = useState<JSX.Element[]>([]);
 
   useEffect(() => {
@@ -77,7 +81,7 @@ const InfiniteGrid: FC<GridProps> = ({ stageRef }) => {
               width={actualWidth}
               height={actualHeight}
               fill={grid[indexX][indexY]}
-              stroke="#333333"
+              stroke={borderColor}
               strokeWidth={strokeWidth}
               perfectDrawEnabled={false}
               listening={false}
@@ -99,7 +103,7 @@ const InfiniteGrid: FC<GridProps> = ({ stageRef }) => {
       }
       window.removeEventListener('resize', updateGrid);
     };
-  }, [stageRef]);
+  }, [stageRef, backgroundColor, borderColor]);
 
   return (
     <Layer>
@@ -108,12 +112,13 @@ const InfiniteGrid: FC<GridProps> = ({ stageRef }) => {
   );
 };
 
-const areEqual = (prevProps: GridProps, nextProps: GridProps) => {
-  return (
-    prevProps.stageRef.current.x === nextProps.stageRef.current.x &&
-    prevProps.stageRef.current.y === nextProps.stageRef.current.y &&
-    prevProps.stageRef.current.scaleX === nextProps.stageRef.current.scaleX
-  );
+const areEqual = (prev: GridProps, next: GridProps) => {
+  const stageUnchanged =
+    prev.stageRef.current.x === next.stageRef.current.x &&
+    prev.stageRef.current.y === next.stageRef.current.y &&
+    prev.stageRef.current.scaleX === next.stageRef.current.scaleX;
+
+  return stageUnchanged;
 };
 
 export default React.memo(InfiniteGrid, areEqual);

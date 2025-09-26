@@ -10,6 +10,7 @@ const PenOptions = () => {
   const tensionOptions = [0.5, 1, 2.5, 3];
 
   const setOption = useCanvasStore(state => state.setOption);
+  const currentColor = useCanvasStore().options.color;
 
   return (
     <>
@@ -31,7 +32,7 @@ const PenOptions = () => {
             <div className="flex flex-row gap-6 items-center justify-between mt-2">
               <p className="text-sm font-light">Color</p>
               <div className="w-22">
-                <Color onChange={(value: any) => setOption("color", value)} />
+                <Color onChange={(value: any) => setOption("color", value)} value={currentColor} />
               </div>
             </div>
           </div>
@@ -67,6 +68,7 @@ const PenOptions = () => {
 const TextOptions = () => {
   const fontSize = [8, 9, 11, 12, 14, 18, 24, 30, 36, 48, 60, 72, 96];
   const setOption = useCanvasStore(state => state.setOption);
+  const currentColor = useCanvasStore().options.color;
 
   return (
     <>
@@ -87,7 +89,7 @@ const TextOptions = () => {
             <div className="flex flex-row gap-6 items-center justify-between mt-2">
               <p className="text-sm font-light">Color</p>
               <div className="w-22">
-                <Color onChange={(value: any) => setOption("color", value)} />
+                <Color onChange={(value: any) => setOption("color", value)} value={currentColor} />
               </div>
             </div>
           </div>
@@ -97,10 +99,41 @@ const TextOptions = () => {
   )
 }
 
-export const ToolOptions = () => {
+export const CanvasOptions = ({ roomId }: { roomId: string }) => {
+  const saveStageState = useCanvasStore(state => state.saveStageState);
+  const currentColor = useCanvasStore().loadStageState(roomId)?.backgroundColor;
+  const borderColor = useCanvasStore().loadStageState(roomId)?.borderColor;
+
+  return (
+    <>
+      <div className="m-6 text-sm select-none">
+        <h1 className="text-xl -mx-2 -mt-2 my-8">Canvas options</h1>
+        <div className="flex flex-col gap-4">
+          <div>
+            <div className="flex flex-row gap-6 items-center justify-between mt-2">
+              <p className="text-sm font-light">Color</p>
+              <div className="w-22">
+                <Color onChange={(value: string) => saveStageState(roomId, { backgroundColor: value })} value={currentColor!} />
+              </div>
+            </div>
+            <div className="flex flex-row gap-6 items-center justify-between mt-2">
+              <p className="text-sm font-light">Border</p>
+              <div className="w-22">
+                <Color onChange={(value: string) => saveStageState(roomId, { borderColor: value })} value={borderColor!} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+export const ToolOptions = ({ roomId }: { roomId: string }) => {
   const TOOL_OPTIONS: Record<string, FC<any>> = {
     pen: PenOptions,
     text: TextOptions,
+    settings: CanvasOptions
   };
   const tool = useCanvasStore(state => state.tool);
   const isMobile = useIsMobile();
@@ -116,7 +149,7 @@ export const ToolOptions = () => {
       -translate-y-1/2 left-0 z-3 transform duration-150 border-border border-1 text-white group ${isMobile ? "-translate-x-48" : "-translate-x-44"} ${isTappedOpen ? "translate-x-0" : ""}`}>
       <div className={`flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-white left-0 top-0 ${isTappedOpen ? "opacity-100" : ""}`} onClick={() => setIsTappedOpen(!isTappedOpen)}>
         {ToolComponent ?
-          <ToolComponent/>
+          <ToolComponent roomId={roomId} />
           :
           null
         }
