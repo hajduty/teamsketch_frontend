@@ -68,7 +68,6 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
   const [isAccordionOpen, setIsAccordionOpen] = useState<boolean>(false);
   const [isVisible, setIsVisible] = useState(false);
 
-
   const fetchPermissions = async () => {
     while (!connection || connection.state !== "Connected") {
       await new Promise((resolve) => setTimeout(resolve, 100));

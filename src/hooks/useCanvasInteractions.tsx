@@ -14,6 +14,7 @@ interface UseCanvasInteractionsProps {
   setStageScale: (scale: number) => void;
   setStagePosition: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
   setIsSpacePressed: (pressed: boolean) => void;
+  roomId: string;
 }
 
 export function useCanvasInteractions({
@@ -25,6 +26,7 @@ export function useCanvasInteractions({
   setStageScale,
   setStagePosition,
   setIsSpacePressed,
+  roomId
 }: UseCanvasInteractionsProps) {
   // Debounced awareness cursor update
   const debouncedSetCursor = useMemo(() =>
@@ -37,9 +39,9 @@ export function useCanvasInteractions({
 
   const editing = useCanvasStore(state => state.editing);
 
-  useEffect(() => {
+/*   useEffect(() => {
     console.log("editing is", editing); // this logs correctly
-  }, [editing]);
+  }, [editing]); */
 
   // Clean up debounce on unmount
   useEffect(() => {
@@ -106,11 +108,14 @@ export function useCanvasInteractions({
 
     setStageScale(newScale);
     setStagePosition(newPos);
+    useCanvasStore.getState().saveStageState(roomId, { x: newPos.x, y: newPos.y }, newScale);
   }, [stageRef, stageScale, setStageScale, setStagePosition]);
 
   // Drag end handler
   const handleStageDragEnd = useCallback((e: any) => {
     setStagePosition(e.target.position());
+    console.log(e.target.position());
+    useCanvasStore.getState().saveStageState(roomId, { x: e.target.position().x, y: e.target.position().y });
   }, [setStagePosition]);
 
   // Attach key listeners

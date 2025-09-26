@@ -11,6 +11,7 @@ interface CanvasState {
   editing: boolean;
   editingId: string;
   guestRooms: Permissions[];
+  stageStates: Record<string, { x: number; y: number; scale: number }>;
 }
 
 interface CanvasActions {
@@ -24,6 +25,8 @@ interface CanvasActions {
   redo: () => void;
   clear: () => void;
   addGuestRoom: (state: Permissions) => void;
+  saveStageState: (roomId: string, pos: { x: number, y: number }, scale: number) => void;
+  loadStageState: (roomId: string) => { x: number; y: number; scale: number; } | null;
 }
 
 type CanvasStore = CanvasState & CanvasActions;
@@ -47,6 +50,13 @@ export const useCanvasStore = create<CanvasStore>(
     editing: false,
     editingId: "",
     guestRooms: [],
+    stageStates: (() => {
+      try {
+        return JSON.parse(localStorage.getItem("stageStates") || "{}");
+      } catch {
+        return {};
+      }
+    })(),
 
     init: async (doc, objects, manager) => {
       ydoc = doc;
@@ -88,9 +98,9 @@ export const useCanvasStore = create<CanvasStore>(
       localStorage.setItem("guestRooms", JSON.stringify(updatedRooms));
     },
 
-    setEditing: (editing) => set({editing}),
+    setEditing: (editing) => set({ editing }),
 
-    setEditingId: (editingId: string) => set({editingId}),
+    setEditingId: (editingId: string) => set({ editingId }),
 
     setUndoRedoStatus: (canUndo, canRedo) => set({ canUndo, canRedo }),
 
@@ -113,6 +123,35 @@ export const useCanvasStore = create<CanvasStore>(
         Y.transact(ydoc, () => {
           yObjects!.forEach((_: any, key: string) => yObjects!.delete(key));
         });
+      }
+    },
+
+    saveStageState: (roomId: string, pos: { x: number; y: number }, scale?: number) => {
+      set(state => {
+        const prevRoomState = state.stageStates[roomId] ?? { scale: 1 };
+        const updated = {
+          ...state.stageStates, // merge all existing rooms
+          [roomId]: { ...pos, scale: scale ?? prevRoomState.scale }
+        };
+
+        localStorage.setItem("stageStates", JSON.stringify(updated));
+        return { stageStates: updated };
+      });
+    },
+
+
+    loadStageState: (roomId) => {
+      const saved = get().stageStates[roomId];
+      if (saved) return saved;
+
+      const stored = localStorage.getItem("stageStates");
+      if (!stored) return null;
+
+      try {
+        const parsed: Record<string, { x: number; y: number; scale: number }> = JSON.parse(stored);
+        return parsed[roomId] || null;
+      } catch {
+        return null;
       }
     }
   })) as StateCreator<CanvasStore>
