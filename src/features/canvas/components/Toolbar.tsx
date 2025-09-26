@@ -3,6 +3,7 @@ import { Button } from "../../../components/Button";
 import Icon from "../../../components/Icon";
 import { useIsMobile } from "../../../hooks/useIsMobile";
 import { useCanvasStore } from "../canvasStore";
+import { PinComponent } from "../../../components/Pin";
 
 export const Toolbar = () => {
   const tools = [
@@ -25,8 +26,8 @@ export const Toolbar = () => {
         ${isMobile ? "h-2" : "h-6 hover:h-20"} 
         ${isTappedOpen ? "h-20" : "h-4"}
         flex justify-center items-center transition-all duration-150`}
-      onClick={() => setIsTappedOpen(!isTappedOpen)}
     >
+      <PinComponent isPinned={isTappedOpen} onClick={() => setIsTappedOpen(!isTappedOpen)} className={`duration-200 transition-opacity group-hover:opacity-100 ${isTappedOpen ? "opacity-100" : "opacity-0"}`} />
       <div
         className={`flex flex-row justify-center gap-4 group-hover:opacity-100 transition-opacity duration-200 ${isTappedOpen ? "opacity-100" : "opacity-0"}`}
       >
