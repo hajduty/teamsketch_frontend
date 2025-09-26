@@ -102,7 +102,7 @@ const InfiniteGrid: FC<GridProps> = ({ stageRef }) => {
   }, [stageRef]);
 
   return (
-    <Layer hitGraphEnabled={false}>
+    <Layer>
       {gridCells}
     </Layer>
   );

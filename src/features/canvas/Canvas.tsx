@@ -80,6 +80,19 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const { tool: activeTool, options: toolOptions, init: initCanvasStore, editingId: editingId, addGuestRoom } = useCanvasStore();
 
   useEffect(() => {
+    if (!roomId || !stageRef.current) return;
+
+    const saved = useCanvasStore.getState().loadStageState(roomId);
+    if (!saved) return;
+
+    stageRef.current.position({ x: saved.x, y: saved.y });
+    stageRef.current.scale({ x: saved.scale, y: saved.scale });
+
+    setStagePosition({ x: saved.x, y: saved.y });
+    setStageScale(saved.scale);
+  }, [roomId, stageRef, setStagePosition, setStageScale]);
+
+  useEffect(() => {
     const setup = async () => {
       await initCanvasStore(ydoc, yObjects, undoManager);
 
@@ -198,6 +211,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     setStageScale,
     setStagePosition,
     setIsSpacePressed,
+    roomId
   });
 
   return (
