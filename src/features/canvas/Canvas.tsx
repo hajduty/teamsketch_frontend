@@ -238,7 +238,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
           }
         }}
       >
-        <InfiniteGrid stageRef={stageRef} />
+        <InfiniteGrid stageRef={stageRef} roomId={roomId}/>
         <Layer>
           {objects.map((obj) => {
             const ToolComponent = TOOLS_COMPONENTS[obj.type];

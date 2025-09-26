@@ -108,13 +108,13 @@ export function useCanvasInteractions({
 
     setStageScale(newScale);
     setStagePosition(newPos);
-    useCanvasStore.getState().saveStageState(roomId, { x: newPos.x, y: newPos.y }, newScale);
+    useCanvasStore.getState().saveStageState(roomId, { x: newPos.x, y: newPos.y, scale: newScale });
   }, [stageRef, stageScale, setStageScale, setStagePosition]);
 
   // Drag end handler
   const handleStageDragEnd = useCallback((e: any) => {
     setStagePosition(e.target.position());
-    console.log(e.target.position());
+    //console.log(e.target.position());
     useCanvasStore.getState().saveStageState(roomId, { x: e.target.position().x, y: e.target.position().y });
   }, [setStagePosition]);
 
