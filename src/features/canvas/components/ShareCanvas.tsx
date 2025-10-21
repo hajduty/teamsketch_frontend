@@ -61,7 +61,7 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
   const { connection } = useSignalR();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string>("");
-  const [selectedRole, setSelectedRole] = useState<string>("viewer");
+  const [selectedRole, setSelectedRole] = useState<string>("editor");
   const [permissions, setPermissions] = useState<Permissions[]>([]);
   const [error, setError] = useState<string>("");
   const [successMessage, setSuccessMessage] = useState<string>("");
@@ -122,7 +122,7 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
 
   const deleteUser = async (permission: Permissions) => {
     try {
-      await apiClient.delete(apiRoutes.permission.remove, { data: permission });
+      await apiClient.delete(apiRoutes.permission.remove(permission.room, permission.userId),);
       setPermissions((prev) =>
         prev.filter((p) => p.userEmail !== permission.userEmail)
       );
@@ -160,7 +160,7 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
 
   return (
     <>
-      <div className="fixed top-0 right-16 m-6 z-10">
+      <div className="fixed top-0 right-16 m-6 z-10 share-canvas">
         <button
           onClick={openModal}
           className="p-2 bg-blue-600 border border-blue-500 rounded-md flex hover:bg-blue-500 transition duration-75"

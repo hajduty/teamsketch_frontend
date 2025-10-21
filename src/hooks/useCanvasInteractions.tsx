@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useCallback, useEffect, useMemo } from "react";
-import debounce from "lodash/debounce";
+import throttle from "lodash/throttle";
 import Konva from "konva";
 import { getTransformedPointer } from "../utils/utils";
 import { useCanvasStore } from "../features/canvas/canvasStore";
@@ -30,18 +30,19 @@ export function useCanvasInteractions({
 }: UseCanvasInteractionsProps) {
   // Debounced awareness cursor update
   const debouncedSetCursor = useMemo(() =>
-    debounce((x: number, y: number) => {
+    throttle((x: number, y: number) => {
       if (providerRef.current) {
         providerRef.current.awareness.setLocalStateField("cursorPosition", { x, y });
       }
-    }, 16)
+    }, 8)
     , [providerRef]);
+
 
   const editing = useCanvasStore(state => state.editing);
 
-/*   useEffect(() => {
-    console.log("editing is", editing); // this logs correctly
-  }, [editing]); */
+  /*   useEffect(() => {
+      console.log("editing is", editing); // this logs correctly
+    }, [editing]); */
 
   // Clean up debounce on unmount
   useEffect(() => {

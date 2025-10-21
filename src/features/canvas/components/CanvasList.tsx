@@ -19,7 +19,11 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
   const { connection } = useSignalR();
 
   const [rooms, setRooms] = useState<Permissions[]>([]);
-  const [collapsed, setCollapsed] = useState(true);
+  //const [collapsed, setCollapsed] = useState(true);
+
+  const collapsed = useCanvasStore(state => state.roomListOpen);
+  const setCollapsed = useCanvasStore(state => state.setRoomListOpen);
+
   const [creating, setCreating] = useState<boolean>(false);
 
   useEffect(() => {
@@ -35,6 +39,14 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
 
       if (!connection) return;
 
+      connection.on("PermissionChanged", (updatedRoom: Permissions) => {
+        console.log("Permission changed", updatedRoom);
+      });
+
+      connection.on("PermissionAdded", (updatedRoom: Permissions) => {
+        console.log("Permission added", updatedRoom);
+      });
+
       try {
         const response = await connection.invoke<Permissions[]>("GetRooms");
         setRooms(response);
@@ -42,7 +54,7 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
         console.error("Failed to fetch rooms", err);
       }
     }
-
+  
     fetchRooms();
   }, [connection])
 
@@ -56,7 +68,9 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
       var uuid = uuidv4();
       console.log("Generated UUID:", uuid);
       var permission: Permissions = { role: "Owner", room: uuid, userId: user?.id!, userEmail: user?.email! }
+      console.log(permission);
       const response = await apiClient.post(apiRoutes.permission.add, permission);
+      console.log(response);
       var room: Permissions = response.data;
       setTimeout(() => {
         setRooms(prev => [...prev, room]);
@@ -69,7 +83,7 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
   }
 
   return (
-    <div className="fixed top-0 left-0 group hover:z-3 z-2 m-4 ">
+    <div className="fixed top-0 left-0 group hover:z-3 z-2 m-4 canvas-list">
       <div className="w-64 border border-neutral-700 bg-neutral-950 rounded-md overflow-hidden hover:overflow-y-auto">
         <div className=" bg-neutral-950 py-3 pl-2 pr-1 text-white space-y-2">
 

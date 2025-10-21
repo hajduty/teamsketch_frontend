@@ -5,17 +5,21 @@ import { Toolbar } from "../features/canvas/components/Toolbar";
 import { ToolOptions } from "../features/canvas/components/ToolOptions";
 import { HistoryButtons } from "../features/canvas/components/HistoryButtons";
 import { ShareCanvas } from "../features/canvas/components/ShareCanvas";
-import { useAuth } from "../features/auth/AuthProvider";
 import { Permissions } from "../types/permission";
 import { CanvasList } from "../features/canvas/components/CanvasList";
 import { UserInfo } from "../features/canvas/components/UserInfo";
 import { getUUID } from "../utils/utils";
 import { useSignalR } from "../features/auth/ProtectedRoute";
 
+import Joyride, { Step, STATUS, CallBackProps } from "react-joyride";
+import { useCanvasStore } from "../features/canvas/canvasStore";
+import { Button } from "../components/Button";
+import Icon from "../components/Icon";
+
 export const CanvasWrapper = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     if (!roomId) {
       if (location.pathname === "/") {
@@ -30,10 +34,81 @@ export const CanvasWrapper = () => {
   return <CanvasPage roomId={roomId} />;
 }
 
+
 function CanvasPage({ roomId }: { roomId: string }) {
   const [permission, setPermission] = useState<Permissions>();
-
   const { connection } = useSignalR();
+
+  const [run, setRun] = useState(false);
+  const [steps] = useState<Step[]>([
+    {
+      target: ".toolbar",
+      content: "This is your toolbar, hover over it to access it, or pin it.",
+      placement: "top",
+      disableBeacon: true
+    },
+    {
+      target: ".pen-tool",
+      content: "This is your main tool for drawing on the screen.",
+      disableBeacon: true
+    },
+    {
+      target: ".pen-options",
+      content: "Here you can change the settings of your selected tool",
+      placement: "right",
+      disableBeacon: true
+    },
+    {
+      target: ".history-buttons",
+      content: "These are your history controls",
+      placement: "top",
+      disableBeacon: true
+    },
+    {
+      target: ".canvas-list",
+      content: "These are the rooms you have access to.",
+      placement: "bottom",
+    },
+    {
+      target: ".share-canvas",
+      content: "You can share your canvas with other users.",
+      placement: "bottom",
+    }
+  ]);
+  const handleJoyrideCallback = (data: CallBackProps) => {
+    const { index, action, status } = data;
+
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      setRun(false);
+      localStorage.setItem("hasSeenCanvasTour", "true");
+    }
+
+    if (action === "next" || action === "start") {
+      switch (index) {
+        case 0:
+          useCanvasStore.getState().setTool("select");
+          useCanvasStore.getState().setToolbarOpen(true);
+          break;
+        case 1:
+          useCanvasStore.getState().setTool("pen");
+          break;
+        case 2:
+          useCanvasStore.getState().setTool("pen");
+          useCanvasStore.getState().setToolOptionsOpen(true);
+          useCanvasStore.getState().setToolbarOpen(false);
+          break;
+        case 3:
+          useCanvasStore.getState().setToolOptionsOpen(false);
+          useCanvasStore.getState().setRoomListOpen(false);
+          break;
+        case 4:
+          break;
+        case 5:
+          useCanvasStore.getState().setRoomListOpen(true);
+          break;
+      }
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -71,14 +146,14 @@ function CanvasPage({ roomId }: { roomId: string }) {
   if (!roomId) return null;
 
   if (permission == null) {
-    return(
-    <>
-      <CanvasList roomId={roomId!}/>
-      <UserInfo />
-      <div className="flex h-screen w-screen justify-center items-center bg-neutral-950">
-        <h1 className="text-white text-2xl select-none">This room does not exist.</h1>
-      </div>
-    </>
+    return (
+      <>
+        <CanvasList roomId={roomId!} />
+        <UserInfo />
+        <div className="flex h-screen w-screen justify-center items-center bg-neutral-950">
+          <h1 className="text-white text-2xl select-none">This room does not exist.</h1>
+        </div>
+      </>
     )
   }
 
@@ -87,15 +162,56 @@ function CanvasPage({ roomId }: { roomId: string }) {
       <div className="flex flex-row h-screen justify-center items-center bg-neutral-800 relative touch-none">
         <CanvasBoard roomId={roomId!} role={permission?.role} key={roomId} />
       </div>
+      <div className="fixed bottom-0 left-0 group hover:z-3 m-2">
+        <Button className="rounded-lg " onClick={() => setRun(true)}><Icon iconName="question_mark" fontSize="18px" color="white" /></Button>
+      </div>
       {permission?.role != "viewer" && <>
         <HistoryButtons />
         <Toolbar />
-        <ToolOptions roomId={roomId!}/>
+        <ToolOptions roomId={roomId!} />
         <ShareCanvas roomId={roomId!} />
         <UserInfo />
       </>
       }
-      <CanvasList roomId={roomId!}/>
+      <CanvasList roomId={roomId!} />
+      <Joyride
+        steps={steps}
+        run={run}
+        continuous
+        showSkipButton={true}
+        showProgress
+        callback={handleJoyrideCallback}
+        styles={{
+          options: {
+            zIndex: 10000,
+            primaryColor: "#155dfc",
+            backgroundColor: "#171717",
+            textColor: "#ffffff",
+            arrowColor: "#171717",
+            width: "350px"
+          },
+          tooltipContent: {
+            padding: "5px"
+          },
+          tooltipContainer: {
+            padding: "5px",
+            fontSize: "14px",
+          },
+          tooltip: {
+            boxSizing: "border-box",
+          },
+          buttonNext: {
+            fontSize: "14px",
+            padding: "6px",
+            minWidth: "auto",
+          },
+          buttonBack: {
+            fontSize: "14px",
+            padding: "6px",
+            minWidth: "auto",
+          },
+        }}
+      />
     </>
   );
 }
