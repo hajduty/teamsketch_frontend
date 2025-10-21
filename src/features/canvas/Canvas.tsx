@@ -216,7 +216,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
 
   return (
     <>
-      <Stage className="m-0 p-0"
+      <Stage className="m-0 p-0 canvas-stage"
         ref={stageRef}
         width={width!}
         height={height!}

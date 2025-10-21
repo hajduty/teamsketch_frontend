@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "../../../components/Button";
 import Icon from "../../../components/Icon";
 import { useIsMobile } from "../../../hooks/useIsMobile";
@@ -17,7 +16,9 @@ export const Toolbar = () => {
   const setTool = useCanvasStore(state => state.setTool);
 
   const isMobile = useIsMobile();
-  const [isTappedOpen, setIsTappedOpen] = useState(false);
+
+  const isTappedOpen = useCanvasStore(state => state.toolbarOpen);
+  const setIsTappedOpen = useCanvasStore(state => state.setToolbarOpen);
 
   return (
     <div
@@ -25,7 +26,7 @@ export const Toolbar = () => {
         border-t border-r border-l border-border group
         ${isMobile ? "h-2" : "h-6 hover:h-20"} 
         ${isTappedOpen ? "h-20" : "h-4"}
-        flex justify-center items-center transition-all duration-150`}
+        flex justify-center items-center transition-all duration-150 toolbar`}
     >
       <PinComponent isPinned={isTappedOpen} onClick={() => setIsTappedOpen(!isTappedOpen)} className={`duration-200 transition-opacity group-hover:opacity-100 ${isTappedOpen ? "opacity-100" : "opacity-0"}`} />
       <div
@@ -37,6 +38,7 @@ export const Toolbar = () => {
             onClick={() => {
               setTool(name);
             }}
+            className={`${name}-tool rounded-xl`}
             highlighted={tool === name}
           >
             <Icon iconName={icon} fontSize="22px" color="white" />

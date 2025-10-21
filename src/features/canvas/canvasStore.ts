@@ -12,6 +12,9 @@ interface CanvasState {
   editingId: string;
   guestRooms: Permissions[];
   stageStates: Record<string, { x: number; y: number; scale: number, backgroundColor: string, borderColor: string }>;
+  toolOptionsOpen: boolean;
+  toolbarOpen: boolean;
+  roomListOpen: boolean;
 }
 
 interface CanvasActions {
@@ -27,6 +30,9 @@ interface CanvasActions {
   addGuestRoom: (state: Permissions) => void;
   saveStageState: (roomId: string, updates: Partial<{ x: number; y: number; scale: number; backgroundColor: string, borderColor: string }>) => void;
   loadStageState: (roomId: string) => { x: number; y: number; scale: number; backgroundColor: string, borderColor: string } | null;
+  setToolOptionsOpen: (state: boolean) => void;
+  setToolbarOpen: (state: boolean) => void;
+  setRoomListOpen: (state: boolean) => void;
 }
 
 type CanvasStore = CanvasState & CanvasActions;
@@ -45,6 +51,9 @@ export const useCanvasStore = create<CanvasStore>(
       fontSize: 16,
       fontFamily: 'Arial',
     },
+    roomListOpen: false,
+    toolOptionsOpen: false,
+    toolbarOpen: false,
     canUndo: false,
     canRedo: false,
     editing: false,
@@ -102,6 +111,8 @@ export const useCanvasStore = create<CanvasStore>(
 
     setEditingId: (editingId: string) => set({ editingId }),
 
+    setRoomListOpen: (roomListOpen) => set({ roomListOpen }),
+
     setUndoRedoStatus: (canUndo, canRedo) => set({ canUndo, canRedo }),
 
     undo: () => {
@@ -125,6 +136,9 @@ export const useCanvasStore = create<CanvasStore>(
         });
       }
     },
+
+    setToolbarOpen: (toolbarOpen) => set({ toolbarOpen }),
+    setToolOptionsOpen: (toolOptionsOpen) => set({ toolOptionsOpen }),
 
     saveStageState: (roomId: string, updates: Partial<{ x: number; y: number; scale: number; backgroundColor: string, borderColor: string }>) => {
       set(state => {

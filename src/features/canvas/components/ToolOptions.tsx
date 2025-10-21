@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { FC } from "react";
 import EditableDropdown from "../../../components/EditableDropdown";
 import { Color } from "../../../components/Color";
 import { useCanvasStore } from "../canvasStore";
@@ -138,7 +138,9 @@ export const ToolOptions = ({ roomId }: { roomId: string }) => {
   };
   const tool = useCanvasStore(state => state.tool);
   const isMobile = useIsMobile();
-  const [isTappedOpen, setIsTappedOpen] = useState(false);
+
+  const isTappedOpen = useCanvasStore(state => state.toolOptionsOpen);
+  const setIsTappedOpen = useCanvasStore(state => state.setToolOptionsOpen);
 
   const ToolComponent = TOOL_OPTIONS[tool];
 
@@ -148,8 +150,10 @@ export const ToolOptions = ({ roomId }: { roomId: string }) => {
   return (
     <>
       <div className={`flex flex-col w-52 hover:translate-x-0 rounded-r-2xl bg-neutral-950 fixed min-h-72 h-auto top-1/2
-      -translate-y-1/2 left-0 z-3 transform duration-150 border-border border-1 text-white group ${isMobile ? "-translate-x-48" : "-translate-x-44"} ${isTappedOpen ? "translate-x-0" : ""}`}>
-        <PinComponent isPinned={isTappedOpen} onClick={() => setIsTappedOpen(!isTappedOpen)} className={`duration-200 transition-opacity group-hover:opacity-100 ${isTappedOpen ? "opacity-100" : "opacity-0"}`}/>
+      -translate-y-1/2 left-0 z-3 transform duration-150 border-border border-1 text-white group ${isMobile ? "-translate-x-48" : "-translate-x-44"}
+       ${isTappedOpen ? "translate-x-0" : ""} ${tool}-options`}>
+        <PinComponent isPinned={isTappedOpen} onClick={() => setIsTappedOpen(!isTappedOpen)} className={`duration-200 transition-opacity group-hover:opacity-100
+           ${isTappedOpen ? "opacity-100" : "opacity-0"}`}/>
         <div className={`flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-white left-0 top-0 ${isTappedOpen ? "opacity-100" : ""}`}>
           {ToolComponent ?
             <ToolComponent roomId={roomId} />
