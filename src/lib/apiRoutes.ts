@@ -4,15 +4,15 @@ const ROOM_URL = import.meta.env.VITE_API_ROOM_URL || "https://localhost:5001/ap
 
 export const apiRoutes = {
   auth: {
-    login: `${AUTH_URL}/Auth/login`,
-    register: `${AUTH_URL}/Auth/register`,
+    login: `${AUTH_URL}/auth/login`,
+    register: `${AUTH_URL}/auth/register`,
   },
   room: {
     collaboration: (roomName: string) => `${ROOM_URL}/room/collaboration/${roomName}`,
   },
   permission: {
     add: `${PERMISSION_URL}/permission`,
-    remove: `${PERMISSION_URL}/permission`,
+    remove: (roomId: string, userId: string) => `${PERMISSION_URL}/permission?roomId=${roomId}&userId=${userId}`,
     edit: `${PERMISSION_URL}/permission`,
     getByRoom: (roomId: string) => `${PERMISSION_URL}/room/permission/${roomId}`,
     getMyRooms: `${PERMISSION_URL}/room/permission`

@@ -14,6 +14,8 @@ const SignalRContext = createContext<SignalRContextType>({
   isConnected: false,
 });
 
+const PERMISSION_URL = import.meta.env.VITE_API_PERMISSION_URL || "https://localhost:7122/api";
+
 export const useSignalR = () => useContext(SignalRContext);
 
 const ProtectedRoute: React.FC = () => {
@@ -29,7 +31,7 @@ const ProtectedRoute: React.FC = () => {
     if (connection) return; // prevent multiple starts in dev/strict mode
 
     const conn = new signalR.HubConnectionBuilder()
-      .withUrl("https://localhost:7122/api/permissionshub", {
+      .withUrl(`${PERMISSION_URL}/permissionshub`, {
         accessTokenFactory: () => token,
       })
       .withAutomaticReconnect()

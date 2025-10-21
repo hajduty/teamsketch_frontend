@@ -35,6 +35,14 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
 
       if (!connection) return;
 
+      connection.on("PermissionChanged", (updatedRoom: Permissions) => {
+        console.log("Permission changed", updatedRoom);
+      });
+
+      connection.on("PermissionAdded", (updatedRoom: Permissions) => {
+        console.log("Permission added", updatedRoom);
+      });
+
       try {
         const response = await connection.invoke<Permissions[]>("GetRooms");
         setRooms(response);
@@ -42,7 +50,7 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
         console.error("Failed to fetch rooms", err);
       }
     }
-
+  
     fetchRooms();
   }, [connection])
 
@@ -56,7 +64,9 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
       var uuid = uuidv4();
       console.log("Generated UUID:", uuid);
       var permission: Permissions = { role: "Owner", room: uuid, userId: user?.id!, userEmail: user?.email! }
+      console.log(permission);
       const response = await apiClient.post(apiRoutes.permission.add, permission);
+      console.log(response);
       var room: Permissions = response.data;
       setTimeout(() => {
         setRooms(prev => [...prev, room]);

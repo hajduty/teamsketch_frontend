@@ -122,7 +122,7 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
 
   const deleteUser = async (permission: Permissions) => {
     try {
-      await apiClient.delete(apiRoutes.permission.remove, { data: permission });
+      await apiClient.delete(apiRoutes.permission.remove(permission.room, permission.userId),);
       setPermissions((prev) =>
         prev.filter((p) => p.userEmail !== permission.userEmail)
       );
