@@ -24,7 +24,8 @@ export const Toolbar = () => {
     <div
       className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-2/3 sm:w-1/3 rounded-t-2xl bg-neutral-950 z-50 
         border-t border-r border-l border-border group
-        ${isMobile ? "h-2" : "h-6 hover:h-20"} 
+        shadow-2xl shadow-black
+        ${isMobile ? "h-2" : "h-6 hover:h-20"}
         ${isTappedOpen ? "h-20" : "h-4"}
         flex justify-center items-center transition-all duration-150 toolbar`}
     >

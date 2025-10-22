@@ -15,7 +15,6 @@ import Joyride, { Step, STATUS, CallBackProps } from "react-joyride";
 import { useCanvasStore } from "../features/canvas/canvasStore";
 import { Button } from "../components/Button";
 import Icon from "../components/Icon";
-import { useAuth } from "../features/auth/AuthProvider";
 
 export const CanvasWrapper = () => {
   const { roomId } = useParams();
@@ -40,7 +39,6 @@ function CanvasPage({ roomId }: { roomId: string }) {
   const [permission, setPermission] = useState<Permissions>();
   const { connection } = useSignalR();
 
-  const {user} = useAuth();
   const [run, setRun] = useState(false);
   const [steps] = useState<Step[]>([
     {
@@ -161,7 +159,7 @@ function CanvasPage({ roomId }: { roomId: string }) {
 
   return (
     <>
-      <div className="flex flex-row h-screen justify-center items-center bg-neutral-800 relative touch-none">
+      <div className="flex flex-row h-screen justify-center items-center bg-neutral-950 relative touch-none">
         <CanvasBoard roomId={roomId!} role={permission?.role} key={roomId} />
       </div>
       <div className="fixed bottom-0 left-0 group hover:z-3 m-2">
