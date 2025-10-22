@@ -56,7 +56,7 @@ export const TextRender: React.FC<TextToolProps> = React.memo(({
     updateObject,
     handleDragStart,
     handleDragMove
-  } = useTransformer(obj, yObjects, updateObjectsFromYjs, userId);
+  } = useTransformer(obj, yObjects, updateObjectsFromYjs);
 
   useEffect(() => {
     if (!editing) {

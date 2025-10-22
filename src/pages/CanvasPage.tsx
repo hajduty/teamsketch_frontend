@@ -15,6 +15,7 @@ import Joyride, { Step, STATUS, CallBackProps } from "react-joyride";
 import { useCanvasStore } from "../features/canvas/canvasStore";
 import { Button } from "../components/Button";
 import Icon from "../components/Icon";
+import { useAuth } from "../features/auth/AuthProvider";
 
 export const CanvasWrapper = () => {
   const { roomId } = useParams();
@@ -39,6 +40,7 @@ function CanvasPage({ roomId }: { roomId: string }) {
   const [permission, setPermission] = useState<Permissions>();
   const { connection } = useSignalR();
 
+  const {user} = useAuth();
   const [run, setRun] = useState(false);
   const [steps] = useState<Step[]>([
     {
@@ -166,7 +168,7 @@ function CanvasPage({ roomId }: { roomId: string }) {
         <Button className="rounded-lg " onClick={() => setRun(true)}><Icon iconName="question_mark" fontSize="18px" color="white" /></Button>
       </div>
       {permission?.role != "viewer" && <>
-        <HistoryButtons />
+        <HistoryButtons/>
         <Toolbar />
         <ToolOptions roomId={roomId!} />
         <ShareCanvas roomId={roomId!} />
