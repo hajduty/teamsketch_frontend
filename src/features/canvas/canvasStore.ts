@@ -15,6 +15,7 @@ interface CanvasState {
   toolOptionsOpen: boolean;
   toolbarOpen: boolean;
   roomListOpen: boolean;
+  canDelete: boolean;
 }
 
 interface CanvasActions {
@@ -27,12 +28,14 @@ interface CanvasActions {
   undo: () => void;
   redo: () => void;
   clear: () => void;
+  delete: () => void;
   addGuestRoom: (state: Permissions) => void;
   saveStageState: (roomId: string, updates: Partial<{ x: number; y: number; scale: number; backgroundColor: string, borderColor: string }>) => void;
   loadStageState: (roomId: string) => { x: number; y: number; scale: number; backgroundColor: string, borderColor: string } | null;
   setToolOptionsOpen: (state: boolean) => void;
   setToolbarOpen: (state: boolean) => void;
   setRoomListOpen: (state: boolean) => void;
+  setCanDelete: (state: boolean) => void;
 }
 
 type CanvasStore = CanvasState & CanvasActions;
@@ -56,6 +59,7 @@ export const useCanvasStore = create<CanvasStore>(
     toolbarOpen: false,
     canUndo: false,
     canRedo: false,
+    canDelete: false,
     editing: false,
     editingId: "",
     guestRooms: [],
@@ -113,6 +117,8 @@ export const useCanvasStore = create<CanvasStore>(
 
     setRoomListOpen: (roomListOpen) => set({ roomListOpen }),
 
+    setCanDelete: (canDelete) => set({ canDelete }),
+
     setUndoRedoStatus: (canUndo, canRedo) => set({ canUndo, canRedo }),
 
     undo: () => {
@@ -135,6 +141,19 @@ export const useCanvasStore = create<CanvasStore>(
           yObjects!.forEach((_: any, key: string) => yObjects!.delete(key));
         });
       }
+    },
+
+    delete: () => {
+      if (!(yObjects instanceof Y.Map) || !ydoc) return;
+      const map = yObjects;
+
+      Y.transact(ydoc, () => {
+        map.forEach((obj, id) => {
+          if (obj instanceof Y.Map && obj.get('selected')) {
+            map.delete(id);
+          }
+        });
+      });
     },
 
     setToolbarOpen: (toolbarOpen) => set({ toolbarOpen }),

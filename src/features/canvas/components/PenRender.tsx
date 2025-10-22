@@ -19,7 +19,7 @@ const PenRender: FC<PenRenderProps> = ({
   obj,
   yObjects,
   updateObjectsFromYjs,
-  userId
+  //userId
 }) => {
   const {
     shapeRef,
@@ -31,7 +31,7 @@ const PenRender: FC<PenRenderProps> = ({
     handleDragEnd,
     preventDefault,
     handleDragStart,
-  } = useTransformer(obj, yObjects, updateObjectsFromYjs, userId);
+  } = useTransformer(obj, yObjects, updateObjectsFromYjs);
 
   useEffect(() => {
     bindTransformer();

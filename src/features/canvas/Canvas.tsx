@@ -69,15 +69,17 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const providerRef = useRef<WebsocketProvider | null>(null);
   const awarenessRef = useRef<any>(null);
   const [otherCursors, setOtherCursors] = useState<AwarenessState[]>([]);
+  
   const undoManager = useRef(new Y.UndoManager(yObjects, {
     captureTimeout: 200,
-    trackedOrigins: new Set([user?.id])
   })).current;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const isToolsDisabled = role === "none" || role === "viewer" || role === "";
 
   const { tool: activeTool, options: toolOptions, init: initCanvasStore, editingId: editingId, addGuestRoom } = useCanvasStore();
+
+  const setCanDelete = useCanvasStore(state => state.setCanDelete);
 
   useEffect(() => {
     if (!roomId || !stageRef.current) return;
@@ -196,6 +198,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     activeTool,
     setSelectedId,
     awarenessRef.current?.getLocalState()?.userId,
+    setCanDelete
   );
 
   const {

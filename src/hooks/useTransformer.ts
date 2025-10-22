@@ -7,7 +7,7 @@ export function useTransformer(
   obj: CanvasObject,
   yObjects: Y.Map<any>,
   updateObjectsFromYjs: () => void,
-  userId: string
+  //userId: string
 ) {
   const shapeRef = useRef<any>(null);
   const transformerRef = useRef<any>(null);
@@ -33,7 +33,7 @@ export function useTransformer(
       Object.entries(properties).forEach(([key, value]) => {
         yObjRef.current?.set(key, value);
       });
-    }, userId);
+    });
 
     updateObjectsFromYjs();
   }, [yObjects, updateObjectsFromYjs]);

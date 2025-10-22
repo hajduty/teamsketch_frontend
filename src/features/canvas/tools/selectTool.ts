@@ -12,8 +12,9 @@ export const SelectTool: Tool = {
     updateObjectsFromYjs: () => void,
     _activeTool: string,
     _setSelectedId: (id: string) => void,
-    _userId: string
-  ): ToolHandlers => {
+    _userId: string,
+    setCanDelete?: (canDelete: boolean) => void
+  ): ToolHandlers => {    
     const handleClick = (e: any) => {
       const node = e.target;
       const validTypes = ['Text', 'Line'];
@@ -29,12 +30,14 @@ export const SelectTool: Tool = {
           yObjects.forEach((obj, id) => {
             if (obj instanceof Y.Map) {
               obj.set('selected', id === selectedId);
+              setCanDelete?.(true);
             }
           });
         } else {
           yObjects.forEach((obj) => {
             if (obj instanceof Y.Map) {
               obj.set('selected', false);
+              setCanDelete?.(false);
             }
           });
         }

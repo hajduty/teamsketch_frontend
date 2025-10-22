@@ -53,6 +53,6 @@ export interface Tool {
     activeTool: string,
     setSelectedId: (id: string) => void,
     userId: string,
+    canDelete: (canDelete: boolean) => void
   ) => ToolHandlers;
-  
 }
