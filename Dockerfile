@@ -14,7 +14,7 @@ ENV VITE_API_WS_URL=$VITE_API_WS_URL
 ENV VITE_API_PERMISSION_URL=$VITE_API_PERMISSION_URL
 ENV VITE_API_AUTH_URL=$VITE_API_AUTH_URL
 
-RUN npm install
+RUN npm install --legacy-peer-deps
 RUN npm run build
 
 # Nginx Stage
