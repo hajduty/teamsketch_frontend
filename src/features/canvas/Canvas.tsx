@@ -86,6 +86,8 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   useEffect(() => {
     if (!roomId || !stageRef.current) return;
 
+    if (!isConnected) return;
+
     const saved = useCanvasStore.getState().loadStageState(roomId);
     if (!saved) return;
 
@@ -94,7 +96,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
 
     setStagePosition({ x: saved.x, y: saved.y });
     setStageScale(saved.scale);
-  }, [roomId, stageRef, setStagePosition, setStageScale]);
+  }, [roomId, stageRef, setStagePosition, setStageScale, isConnected]);
 
   useEffect(() => {
     const setup = async () => {

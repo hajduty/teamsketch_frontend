@@ -40,11 +40,34 @@ export const CanvasList: FC<{ roomId: string }> = ({ roomId }) => {
       if (!connection) return;
 
       connection.on("PermissionChanged", (updatedRoom: Permissions) => {
-        console.log("Permission changed", updatedRoom);
+        if (!updatedRoom) {
+          return;
+        }
+
+        setRooms(prev => {
+          const updated = prev.filter(r => r.room !== updatedRoom.room);
+          console.log("Removed room:", updatedRoom.room);
+          return updated;
+        });
       });
 
       connection.on("PermissionAdded", (updatedRoom: Permissions) => {
-        console.log("Permission added", updatedRoom);
+        if (!updatedRoom) {
+          return;
+        }
+
+        updatedRoom.createdAt = new Date();
+        updatedRoom.userId = user?.id!;
+        updatedRoom.userEmail = user?.email!;
+
+        setRooms(prev => {
+          const exists = prev.some(r => r.room === updatedRoom.room);
+          if (exists) {
+            return prev
+          }
+
+          return [...prev, updatedRoom];
+        });
       });
 
       try {
@@ -71,12 +94,22 @@ export const CanvasList: FC<{ roomId: string }> = ({ roomId }) => {
       console.log(permission);
       const response = await apiClient.post(apiRoutes.permission.add, permission);
       console.log(response);
-      var room: Permissions = response.data;
+      var newRoom: Permissions = response.data;
+
       setTimeout(() => {
-        setRooms(prev => [...prev, room]);
+        setRooms(prev => {
+          const exists = prev.some(r => r.room === newRoom.room);
+          if (exists) {
+            return prev
+          }
+
+          return [...prev, newRoom];
+        });
       }, cooldownMs);
+
       setCreating(false);
-      return room.room;
+
+      return newRoom.room;
     } catch (err: any) {
       setCreating(false);
     }
@@ -96,13 +129,11 @@ export const CanvasList: FC<{ roomId: string }> = ({ roomId }) => {
             <span>My rooms</span>
           </div>
 
-          {/* Collapsible content */}
           {(
             <>
               <div
                 className={`overflow-hidden transition-all duration-150 ease-in-out ${collapsed ? "max-h-0 opacity-0" : "max-h-[600px] opacity-100"
                   }`}>
-                {/* New Room Button */}
                 {rooms.length === 0 ? (<>
                   <NewRoomButton createNewRoom={createNewRoom} creating={creating} cooldownMs={cooldownMs} />
                 </>
@@ -114,9 +145,7 @@ export const CanvasList: FC<{ roomId: string }> = ({ roomId }) => {
                         <li
                           key={perm.room}
                           className={`flex justify-between items-center border border-neutral-700 rounded p-2 hover:bg-neutral-800 transition-all duration-300 ease-out transform ${perm.room == roomId ? "bg-neutral-900" : ""
-                            } ${
-                            // This will make new items slide in from the top
-                            index === 0 ? "animate-slide-in" : ""
+                            } ${index === 0 ? "animate-slide-in" : ""
                             }`}
                           style={{
                             animation: index === 0 ? 'slideIn 0.3s ease-out' : 'none'
@@ -148,23 +177,6 @@ export const CanvasList: FC<{ roomId: string }> = ({ roomId }) => {
           )}
         </div>
       </div>
-
-      {/* Add CSS animation in your global CSS or style tag */}
-      <style>{`
-      @keyframes slideIn {
-        0% {
-          opacity: 0;
-          transform: translateY(-20px);
-        }
-        100% {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      .animate-slide-in {
-        animation: slideIn 0.3s ease-out;
-      }
-    `}</style>
     </div>
   );
 };
