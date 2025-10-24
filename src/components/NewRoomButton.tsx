@@ -27,7 +27,7 @@ export function NewRoomButton({ createNewRoom, cooldownMs = 200, creating }: New
     <button
       onClick={handleClick}
       disabled={creating}
-      className={`${created ? "bg-green-600 hover:bg-green-500" : "bg-blue-600 hover:bg-blue-500"} w-full flex items-center justify-center gap-2 transition-colors duration-300 rounded px-3 py-1 text-sm font-medium disabled:bg-gray-600 disabled:hover:bg-gray-600`}
+      className={`${created ? "bg-green-600 hover:bg-green-500" : "bg-blue-600 hover:bg-blue-500"} w-full select-none cursor-pointer flex items-center justify-center gap-2 transition-colors duration-300 rounded px-3 py-1 text-sm font-medium disabled:bg-gray-600 disabled:hover:bg-gray-600`}
     >
       {creating && (
         <svg

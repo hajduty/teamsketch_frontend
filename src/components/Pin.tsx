@@ -16,7 +16,8 @@ export const PinComponent: FC<PinProps> = ({ isPinned, onClick, className }) => 
         rounded-md
         flex items-center justify-center 
         transition-colors duration-200
-        ${isPinned ? "bg-neutral-800 text-neutral-400 hover:bg-neutral-500" : "text-neutral-500 hover:bg-neutral-700"} 
+        select-none cursor-pointer
+        ${isPinned ? "bg-neutral-800 text-neutral-400 hover:bg-neutral-500 " : "text-neutral-500 hover:bg-neutral-700"} 
         ${className || ""}
       `}
       aria-label={isPinned ? "Unpin" : "Pin"}

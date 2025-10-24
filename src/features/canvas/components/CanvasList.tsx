@@ -12,7 +12,7 @@ import { Permissions } from "../../../types/permission";
 
 var cooldownMs = 1000;
 
-export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
+export const CanvasList: FC<{ roomId: string }> = ({ roomId }) => {
   const navigate = useNavigate();
   const { guest, user } = useAuth();
   const { guestRooms } = useCanvasStore();
@@ -40,11 +40,34 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
       if (!connection) return;
 
       connection.on("PermissionChanged", (updatedRoom: Permissions) => {
-        console.log("Permission changed", updatedRoom);
+        if (!updatedRoom) {
+          return;
+        }
+
+        setRooms(prev => {
+          const updated = prev.filter(r => r.room !== updatedRoom.room);
+          console.log("Removed room:", updatedRoom.room);
+          return updated;
+        });
       });
 
       connection.on("PermissionAdded", (updatedRoom: Permissions) => {
-        console.log("Permission added", updatedRoom);
+        if (!updatedRoom) {
+          return;
+        }
+
+        updatedRoom.createdAt = new Date();
+        updatedRoom.userId = user?.id!;
+        updatedRoom.userEmail = user?.email!;
+
+        setRooms(prev => {
+          const exists = prev.some(r => r.room === updatedRoom.room);
+          if (exists) {
+            return prev
+          }
+
+          return [...prev, updatedRoom];
+        });
       });
 
       try {
@@ -54,7 +77,7 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
         console.error("Failed to fetch rooms", err);
       }
     }
-  
+
     fetchRooms();
   }, [connection])
 
@@ -71,12 +94,22 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
       console.log(permission);
       const response = await apiClient.post(apiRoutes.permission.add, permission);
       console.log(response);
-      var room: Permissions = response.data;
+      var newRoom: Permissions = response.data;
+
       setTimeout(() => {
-        setRooms(prev => [...prev, room]);
+        setRooms(prev => {
+          const exists = prev.some(r => r.room === newRoom.room);
+          if (exists) {
+            return prev
+          }
+
+          return [...prev, newRoom];
+        });
       }, cooldownMs);
+
       setCreating(false);
-      return room.room;
+
+      return newRoom.room;
     } catch (err: any) {
       setCreating(false);
     }
@@ -85,7 +118,7 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
   return (
     <div className="fixed top-0 left-0 group hover:z-3 z-2 m-4 canvas-list">
       <div className="w-64 border border-neutral-700 bg-neutral-950 rounded-md overflow-hidden hover:overflow-y-auto">
-        <div className=" bg-neutral-950 py-3 pl-2 pr-1 text-white space-y-2">
+        <div className="bg-neutral-950 py-3 pl-2 pr-1 text-white space-y-2">
 
           {/* Collapsible Header */}
           <div
@@ -96,13 +129,11 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
             <span>My rooms</span>
           </div>
 
-          {/* Collapsible content */}
           {(
             <>
               <div
                 className={`overflow-hidden transition-all duration-150 ease-in-out ${collapsed ? "max-h-0 opacity-0" : "max-h-[600px] opacity-100"
                   }`}>
-                {/* New Room Button */}
                 {rooms.length === 0 ? (<>
                   <NewRoomButton createNewRoom={createNewRoom} creating={creating} cooldownMs={cooldownMs} />
                 </>
@@ -110,30 +141,35 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
                   <ul className="space-y-2 max-h-96 overflow-auto scrollbar-thin pr-1 pl-2">
                     <NewRoomButton createNewRoom={createNewRoom} creating={creating} cooldownMs={cooldownMs} />
                     {rooms.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
-                    .map((perm) => (
-                      <li
-                        key={perm.room}
-                        className={`flex justify-between items-center border border-neutral-700 rounded p-2 hover:bg-neutral-800 transition ${perm.room == roomId ? "bg-neutral-900" : ""}`}
-                      >
-                        <div className="flex flex-col min-w-0 flex-1 mr-2">
-                          <span className="text-sm break-all select-none text-neutral-400">
-                            Room ID:
-                          </span>
-                          <span className="font-medium text-sm break-all">
-                            {perm.room}
-                          </span>
-                          <span className="text-sm text-neutral-400">
-                            {perm.role}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => navigate(`/${perm.room}`)}
-                          className="text-blue-400 text-sm flex items-center gap-1 flex-shrink-0 cursor-pointer"
+                      .map((perm, index) => (
+                        <li
+                          key={perm.room}
+                          className={`flex justify-between items-center border border-neutral-700 rounded p-2 hover:bg-neutral-800 transition-all duration-300 ease-out transform ${perm.room == roomId ? "bg-neutral-900" : ""
+                            } ${index === 0 ? "animate-slide-in" : ""
+                            }`}
+                          style={{
+                            animation: index === 0 ? 'slideIn 0.3s ease-out' : 'none'
+                          }}
                         >
-                          <Icon iconName="arrow_forward" fontSize="20px" color="white" />
-                        </button>
-                      </li>
-                    ))}
+                          <div className="flex flex-col min-w-0 flex-1 mr-2">
+                            <span className="text-sm break-all select-none text-neutral-400">
+                              Room ID:
+                            </span>
+                            <span className="font-medium text-sm break-all">
+                              {perm.room}
+                            </span>
+                            <span className="text-sm text-neutral-400">
+                              {perm.role}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => navigate(`/${perm.room}`)}
+                            className="text-blue-400 text-sm flex items-center gap-1 flex-shrink-0 cursor-pointer"
+                          >
+                            <Icon iconName="arrow_forward" fontSize="20px" color="white" />
+                          </button>
+                        </li>
+                      ))}
                   </ul>
                 )}
               </div>
@@ -141,6 +177,6 @@ export const CanvasList: FC<{roomId: string}> = ({roomId}) => {
           )}
         </div>
       </div>
-    </div >
+    </div>
   );
 };

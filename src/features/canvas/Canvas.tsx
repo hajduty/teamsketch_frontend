@@ -69,7 +69,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const providerRef = useRef<WebsocketProvider | null>(null);
   const awarenessRef = useRef<any>(null);
   const [otherCursors, setOtherCursors] = useState<AwarenessState[]>([]);
-  
+
   const undoManager = useRef(new Y.UndoManager(yObjects, {
     captureTimeout: 200,
   })).current;
@@ -81,8 +81,12 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
 
   const setCanDelete = useCanvasStore(state => state.setCanDelete);
 
+  const [isConnected, setIsConnected] = useState(false);
+
   useEffect(() => {
     if (!roomId || !stageRef.current) return;
+
+    if (!isConnected) return;
 
     const saved = useCanvasStore.getState().loadStageState(roomId);
     if (!saved) return;
@@ -92,7 +96,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
 
     setStagePosition({ x: saved.x, y: saved.y });
     setStageScale(saved.scale);
-  }, [roomId, stageRef, setStagePosition, setStageScale]);
+  }, [roomId, stageRef, setStagePosition, setStageScale, isConnected]);
 
   useEffect(() => {
     const setup = async () => {
@@ -176,7 +180,26 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
       updateObjectsFromYjs();
     });
 
+    const handleStatus = ({ status }: { status: string }) => {
+      setIsConnected(status === 'connected');
+    };
+
+    const handleSync = (isSynced: boolean) => {
+      if (isSynced) {
+        setIsConnected(true);
+      }
+    };
+
+    providerRef.current.on('status', handleStatus);
+    providerRef.current.on('sync', handleSync);
+
+    if (providerRef.current.wsconnected) {
+      setIsConnected(true);
+    }
+
     return () => {
+      providerRef.current?.off('status', handleStatus);
+      providerRef.current?.off('sync', handleSync);
       providerRef.current?.disconnect();
     };
   }, [updateObjectsFromYjs, yObjects]);
@@ -217,6 +240,33 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     roomId
   });
 
+  if (!isConnected) {
+    return (
+      <div className="m-0 p-0 canvas-stage">
+        <svg
+          className="h-4 w-4 text-white animate-spin"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+          />
+        </svg>
+      </div>
+    )
+  }
+
   return (
     <>
       <Stage className="m-0 p-0 canvas-stage"
@@ -241,7 +291,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
           }
         }}
       >
-        <InfiniteGrid stageRef={stageRef} roomId={roomId}/>
+        <InfiniteGrid stageRef={stageRef} roomId={roomId} />
         <Layer>
           {objects.map((obj) => {
             const ToolComponent = TOOLS_COMPONENTS[obj.type];

@@ -4,12 +4,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthProvider';
 import axios from 'axios';
 import { apiRoutes } from '../../lib/apiRoutes';
-import { User } from '../../types/user';
-import { getUUID } from '../../utils/utils';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
-  const { authenticated, login } = useAuth();
+  const { authenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
