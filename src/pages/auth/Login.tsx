@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthProvider';
 import axios from 'axios';
 import { apiRoutes } from '../../lib/apiRoutes';
-import { getUUID } from '../../utils/utils';
 
 const SignIn: React.FC = () => {
   const navigate = useNavigate();
@@ -32,8 +31,7 @@ const SignIn: React.FC = () => {
       if (from) {
         navigate(from);
       } else {
-        const newRoomId = getUUID();
-        navigate(`/${newRoomId}`, { replace: true });
+        navigate(`/`, { replace: true });
       }
     } catch (err) {
       console.error("Login failed", err);
