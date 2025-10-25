@@ -8,31 +8,68 @@ import { ShareCanvas } from "../features/canvas/components/ShareCanvas";
 import { Permissions } from "../types/permission";
 import { CanvasList } from "../features/canvas/components/CanvasList";
 import { UserInfo } from "../features/canvas/components/UserInfo";
-import { getUUID } from "../utils/utils";
 import { useSignalR } from "../features/auth/ProtectedRoute";
+import { v4 as uuidv4 } from 'uuid';
 
 import Joyride, { Step, STATUS, CallBackProps } from "react-joyride";
 import { useCanvasStore } from "../features/canvas/canvasStore";
 import { Button } from "../components/Button";
 import Icon from "../components/Icon";
+import apiClient from "../lib/apiClient";
+import { useAuth } from "../features/auth/AuthProvider";
+import { apiRoutes } from "../lib/apiRoutes";
 
 export const CanvasWrapper = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const {user} = useAuth();
+
+  const createNewRoom = async (): Promise<string | undefined> => {
+    try {
+      const uuid = uuidv4();
+      const permission: Permissions = {
+        role: "Owner",
+        room: uuid,
+        userId: user?.id!,
+        userEmail: user?.email!,
+      };
+
+      const response = await apiClient.post(apiRoutes.permission.add, permission);
+      const newRoom: Permissions = response.data;
+
+      return newRoom.room;
+    } catch (err) {
+    }
+  };
 
   useEffect(() => {
-    if (!roomId) {
-      if (location.pathname === "/") {
-        const newRoomId = getUUID();
-        navigate(`/${newRoomId}`, { replace: true });
-      }
-    }
-  }, [roomId, location.pathname, navigate]);
+    const ensureRoomExists = async () => {
+      if (!roomId && location.pathname === "/" && user?.id) {
+        try {
+          const response = await apiClient.get(apiRoutes.permission.getMyRooms(user.id));
+          const myRooms: Permissions[] = response.data;
 
-  if (!roomId) return <></>
+          if (myRooms && myRooms.length > 0) {
+            navigate(`/${myRooms[0].room}`, { replace: true });
+          } else {
+            const newRoomId = await createNewRoom();
+            if (newRoomId) {
+              navigate(`/${newRoomId}`, { replace: true });
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch user rooms:", error);
+        }
+      }
+    };
+
+    ensureRoomExists();
+  }, [roomId, location.pathname, navigate, user?.id]);
+
+  if (!roomId) return <></>;
 
   return <CanvasPage roomId={roomId} />;
-}
+};
 
 
 function CanvasPage({ roomId }: { roomId: string }) {

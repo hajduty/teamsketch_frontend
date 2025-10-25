@@ -1,4 +1,3 @@
-// components/TextEditor.tsx
 import React, { useEffect, useRef } from 'react';
 import { Html } from 'react-konva-utils';
 
@@ -19,19 +18,25 @@ export const TextEditor: React.FC<TextEditorProps> = ({ textNode, onClose, onCha
     const stageBox = stage.container().getBoundingClientRect();
 
     const absPos = textNode.getAbsolutePosition();
-    const scale = stage.scaleX();
+    const stageScale = stage.scaleX();
 
     const stageOffset = stage.position();
 
-    const x = (absPos.x - stageOffset.x) / scale + stageBox.left;
-    const y = (absPos.y - stageOffset.y) / scale + stageBox.top;
+    const textScaleX = textNode.scaleX();
+    const textScaleY = textNode.scaleY();
+
+    const actualWidth = textNode.width() * textScaleX;
+    const actualFontSize = textNode.fontSize() * textScaleY;
+
+    const x = (absPos.x - stageOffset.x) / stageScale + stageBox.left;
+    const y = (absPos.y - stageOffset.y) / stageScale + stageBox.top;
 
     textarea.style.position = "absolute";
     textarea.style.top = `${y}px`;
     textarea.style.left = `${x}px`;
-    textarea.style.width = `${textNode.width() - textNode.padding() * 2}px`;
-    textarea.style.height = `${textNode.height() - textNode.padding() * 2 + 5}px`;
-    textarea.style.fontSize = `${textNode.fontSize()}px`;
+    textarea.style.width = `${actualWidth - textNode.padding() * 2}px`;
+    textarea.style.height = `${textNode.height() * textScaleY - textNode.padding() * 2 + 5}px`;
+    textarea.style.fontSize = `${actualFontSize}px`;
     textarea.style.lineHeight = `${textNode.lineHeight()}`;
     textarea.style.fontFamily = textNode.fontFamily();
     textarea.style.color = textNode.fill();

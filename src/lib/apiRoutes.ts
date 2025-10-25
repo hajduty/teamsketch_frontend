@@ -12,9 +12,9 @@ export const apiRoutes = {
   },
   permission: {
     add: `${PERMISSION_URL}/permission`,
-    remove: (roomId: string, userId: string) => `${PERMISSION_URL}/permission?roomId=${roomId}&userId=${userId}`,
+    remove: (roomId: string, userId: string) => `${PERMISSION_URL}/permission?userId=${userId}&roomId=${roomId}`,
     edit: `${PERMISSION_URL}/permission`,
     getByRoom: (roomId: string) => `${PERMISSION_URL}/room/permission/${roomId}`,
-    getMyRooms: `${PERMISSION_URL}/room/permission`
+    getMyRooms: (userId: string) => `${PERMISSION_URL}/permission/all?userId=${userId}`,
   }
 };
