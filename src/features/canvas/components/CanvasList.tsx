@@ -1,57 +1,58 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useState, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
+
 import apiClient from "../../../lib/apiClient";
 import { apiRoutes } from "../../../lib/apiRoutes";
 import Icon from "../../../components/Icon";
-import { useAuth } from "../../auth/AuthProvider";
-import { useCanvasStore } from "../canvasStore";
-import { useNavigate } from "react-router-dom";
-import { v4 as uuidv4 } from 'uuid';
 import { NewRoomButton } from "../../../components/NewRoomButton";
-import { useSignalR } from "../../auth/ProtectedRoute";
-import { Permissions } from "../../../types/permission";
 import { DeletePopup } from "./DeletePopup";
 
-var cooldownMs = 1000;
+import { useAuth } from "../../auth/AuthProvider";
+import { useSignalR } from "../../auth/ProtectedRoute";
+import { useCanvasStore } from "../canvasStore";
+import { useIsMobile } from "../../../hooks/useIsMobile";
+import { Permissions } from "../../../types/permission";
+import React from "react";
 
-export const CanvasList: FC<{ roomId: string }> = ({ roomId }) => {
+const cooldownMs = 1000;
+
+const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
   const navigate = useNavigate();
   const { guest, user } = useAuth();
   const { guestRooms } = useCanvasStore();
   const { connection } = useSignalR();
-
-  const [rooms, setRooms] = useState<Permissions[]>([]);
+  const isMobile = useIsMobile();
 
   const collapsed = useCanvasStore(state => state.roomListOpen);
   const setCollapsed = useCanvasStore(state => state.setRoomListOpen);
 
-  const [creating, setCreating] = useState<boolean>(false);
+  const [rooms, setRooms] = useState<Permissions[]>([]);
+  const [creating, setCreating] = useState(false);
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Permissions | null>(null);
 
-  const fetchRooms = async () => {
+  const fetchRooms = useCallback(async () => {
     if (guest) {
       setRooms(guestRooms);
       return;
     }
 
     while (!connection || connection.state !== "Connected") {
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
-
-    if (!connection) return;
 
     try {
-      const response = await connection.invoke<Permissions[]>("GetRooms");
-      setRooms(response);
-    } catch (err: any) {
+      const response = await connection?.invoke<Permissions[]>("GetRooms");
+      if (response) setRooms(response);
+    } catch (err) {
       console.error("Failed to fetch rooms", err);
     }
-  };
+  }, [guest, guestRooms, connection]);
 
   useEffect(() => {
-    const setupRoomListeners = async () => {
+    const setupListeners = async () => {
       await fetchRooms();
-
       if (!connection) return;
 
       connection.on("PermissionChanged", (updatedRoom: Permissions) => {
@@ -66,22 +67,18 @@ export const CanvasList: FC<{ roomId: string }> = ({ roomId }) => {
         updatedRoom.userId = user?.id!;
         updatedRoom.userEmail = user?.email!;
 
-        setRooms(prev => {
-          const exists = prev.some(r => r.room === updatedRoom.room);
-          return exists ? prev : [...prev, updatedRoom];
-        });
+        setRooms(prev =>
+          prev.some(r => r.room === updatedRoom.room) ? prev : [...prev, updatedRoom]
+        );
       });
     };
 
-    setupRoomListeners();
-  }, [connection, guest, guestRooms, user?.id, user?.email]);
+    setupListeners();
+  }, [connection, fetchRooms, user?.id, user?.email]);
 
+  const toggleCollapse = useCallback(() => setCollapsed(!collapsed), [collapsed, setCollapsed]);
 
-  const toggleCollapse = () => {
-    setCollapsed(!collapsed);
-  };
-
-  const createNewRoom = async () => {
+  const createNewRoom = useCallback(async () => {
     setCreating(true);
     try {
       const uuid = uuidv4();
@@ -89,32 +86,134 @@ export const CanvasList: FC<{ roomId: string }> = ({ roomId }) => {
         role: "Owner",
         room: uuid,
         userId: user?.id!,
-        userEmail: user?.email!
+        userEmail: user?.email!,
       };
 
       const response = await apiClient.post(apiRoutes.permission.add, permission);
       const newRoom: Permissions = response.data;
 
       setTimeout(() => {
-        setRooms(prev => {
-          const exists = prev.some(r => r.room === newRoom.room);
-          return exists ? prev : [...prev, newRoom];
-        });
+        setRooms(prev =>
+          prev.some(r => r.room === newRoom.room) ? prev : [...prev, newRoom]
+        );
       }, 1000);
 
       return newRoom.room;
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to create room:", err);
     } finally {
       setCreating(false);
     }
-  };
+  }, [user?.id, user?.email]);
 
-  const handleDeletePopup = (room: Permissions) => {
-    setSelectedRoom(room);
-    setIsDeletePopupOpen(true);
-    fetchRooms();
-  };
+  const handleDeletePopup = useCallback(
+    (room: Permissions) => {
+      setSelectedRoom(room);
+      setIsDeletePopupOpen(true);
+      fetchRooms();
+    },
+    [fetchRooms]
+  );
+
+  const sortedRooms = useMemo(
+    () =>
+      rooms
+        .slice()
+        .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()),
+    [rooms]
+  );
+
+  const RoomItem: FC<{ perm: Permissions; index: number }> = useCallback(
+    ({ perm, index }) => (
+      <li
+        key={perm.room}
+        className={`relative flex justify-between items-center border border-neutral-700 rounded p-2 hover:bg-neutral-800 transition-all duration-300 ease-out transform group ${
+          perm.room === roomId ? "bg-neutral-900" : ""
+        } ${index === 0 ? "animate-slide-in" : ""}`}
+        style={{ animation: index === 0 ? "slideIn 0.3s ease-out" : "none" }}
+      >
+        <div className="flex flex-col min-w-0 flex-1 mr-2">
+          <span className="text-sm break-all select-none text-neutral-400">Room ID:</span>
+          <span className="font-medium text-sm break-all">{perm.room}</span>
+          <span className="text-sm text-neutral-400">{perm.role}</span>
+        </div>
+        <button
+          onClick={() => navigate(`/${perm.room}`)}
+          className="text-blue-400 text-sm flex items-center gap-1 flex-shrink-0 cursor-pointer"
+        >
+          <Icon iconName="arrow_forward" fontSize="20px" color="white" />
+        </button>
+        <button
+          onClick={() => handleDeletePopup(perm)}
+          className={`absolute bottom-1 right-2 cursor-pointer ${
+            isMobile ? "opacity-100" : "opacity-0"
+          } group-hover:opacity-100 transition-opacity duration-200 hover:text-red-600 text-neutral-600`}
+        >
+          <Icon iconName="delete" fontSize="20px" />
+        </button>
+      </li>
+    ),
+    [handleDeletePopup, isMobile, navigate, roomId]
+  );
+
+  const content = useMemo(() => {
+    return (
+      <div className="fixed top-0 left-0 hover:z-3 z-2 m-4 canvas-list">
+        <div
+          className={`border border-t-zinc-700 border-zinc-800 bg-neutral-950 rounded-md ${
+            isMobile
+              ? `transition-all duration-300 ease-in-out ${
+                  collapsed ? "w-10 overflow-hidden" : "w-64 overflow-hidden hover:overflow-y-auto"
+                }`
+              : "w-64 overflow-hidden hover:overflow-y-auto"
+          }`}
+        >
+          <div className={`bg-neutral-950 py-2 pl-2 pr-2 text-white`}>
+            <div
+              onClick={toggleCollapse}
+              className={`flex justify-start items-center cursor-pointer select-none font-semibold text-sm ${
+                isMobile ? "whitespace-nowrap" : ""
+              }`}
+            >
+              <Icon iconName={collapsed ? "expand_more" : "expand_less"} color="white" />
+              <span
+                className={`transition-all duration-300 ease-in-out ${
+                  isMobile ? (collapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100 w-auto") : ""
+                }`}
+              >
+                My rooms
+              </span>
+            </div>
+
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                collapsed ? "max-h-0 opacity-0" : "max-h-[600px] opacity-100"
+              }`}
+            >
+              <div
+                className={
+                  isMobile
+                    ? `transition-opacity duration-200 ${collapsed ? "opacity-0" : "opacity-100 delay-150"}`
+                    : ""
+                }
+              >
+                {rooms.length === 0 ? (
+                  <NewRoomButton createNewRoom={createNewRoom} creating={creating} cooldownMs={cooldownMs} />
+                ) : (
+                  <ul className="space-y-2 max-h-96 overflow-auto scrollbar-thin pr-1 pl-2">
+                    <NewRoomButton createNewRoom={createNewRoom} creating={creating} cooldownMs={cooldownMs} />
+                    {sortedRooms.map((perm, index) => (
+                      <RoomItem key={perm.room} perm={perm} index={index} />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }, [collapsed, createNewRoom, isMobile, rooms, RoomItem, sortedRooms, toggleCollapse, creating]);
 
   return (
     <>
@@ -126,73 +225,9 @@ export const CanvasList: FC<{ roomId: string }> = ({ roomId }) => {
         }}
         room={selectedRoom!}
       />
-      <div className="fixed w-64 top-0 left-0 hover:z-3 z-2 m-4 canvas-list">
-        <div className={`border border-neutral-700 bg-neutral-950 rounded-md overflow-hidden hover:overflow-y-auto`}>
-          <div className="bg-neutral-950 py-3 pl-2 pr-1 text-white space-y-2">
-            <div
-              onClick={toggleCollapse}
-              className="flex items-center cursor-pointer select-none font-semibold text-sm"
-            >
-              <Icon iconName={collapsed ? "expand_more" : "expand_less"} color="white" />
-              <span>My rooms</span>
-            </div>
-
-            {(
-              <>
-                <div
-                  className={`overflow-hidden transition-all duration-150 ease-in-out ${collapsed ? "max-h-0 opacity-0" : "max-h-[600px] opacity-100"
-                    }`}>
-                  {rooms.length === 0 ? (<>
-                    <NewRoomButton createNewRoom={createNewRoom} creating={creating} cooldownMs={cooldownMs} />
-                  </>
-                  ) : (
-                    <ul className="space-y-2 max-h-96 overflow-auto scrollbar-thin pr-1 pl-2">
-                      <NewRoomButton createNewRoom={createNewRoom} creating={creating} cooldownMs={cooldownMs} />
-                      {rooms.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
-                        .map((perm, index) => (
-                          <li
-                            key={perm.room}
-                            className={`flex justify-between items-center border border-neutral-700 rounded p-2 hover:bg-neutral-800 transition-all duration-300 ease-out transform group ${perm.room == roomId ? "bg-neutral-900" : ""
-                              } ${index === 0 ? "animate-slide-in" : ""
-                              }`}
-                            style={{
-                              animation: index === 0 ? 'slideIn 0.3s ease-out' : 'none'
-                            }}
-                          >
-                            <div className="flex flex-col min-w-0 flex-1 mr-2">
-                              <span className="text-sm break-all select-none text-neutral-400">
-                                Room ID:
-                              </span>
-                              <span className="font-medium text-sm break-all">
-                                {perm.room}
-                              </span>
-                              <span className="text-sm text-neutral-400">
-                                {perm.role}
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => navigate(`/${perm.room}`)}
-                              className="text-blue-400 text-sm flex items-center gap-1 flex-shrink-0 cursor-pointer"
-                            >
-                              <Icon iconName="arrow_forward" fontSize="20px" color="white" />
-                            </button>
-
-                            <button
-                              onClick={() => handleDeletePopup(perm)}
-                              className="absolute bottom-1 right-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:text-red-600 text-neutral-600"
-                            >
-                              <Icon iconName="delete" fontSize="20px" />
-                            </button>
-                          </li>
-                        ))}
-                    </ul>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      {content}
     </>
   );
 };
+
+export const CanvasList = React.memo(CanvasListComponent);

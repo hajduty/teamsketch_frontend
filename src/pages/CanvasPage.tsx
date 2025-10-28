@@ -104,7 +104,7 @@ function CanvasPage({ roomId }: { roomId: string }) {
     {
       target: ".canvas-list",
       content: "These are the rooms you have access to.",
-      placement: "bottom",
+      placement: "right",
     },
     {
       target: ".share-canvas",
@@ -123,14 +123,11 @@ function CanvasPage({ roomId }: { roomId: string }) {
     if (action === "next" || action === "start") {
       switch (index) {
         case 0:
-          useCanvasStore.getState().setTool("select");
           useCanvasStore.getState().setToolbarOpen(true);
           break;
         case 1:
-          useCanvasStore.getState().setTool("pen");
           break;
         case 2:
-          useCanvasStore.getState().setTool("pen");
           useCanvasStore.getState().setToolOptionsOpen(true);
           useCanvasStore.getState().setToolbarOpen(false);
           break;
