@@ -20,12 +20,36 @@ export const Toolbar = () => {
   const isTappedOpen = useCanvasStore(state => state.toolbarOpen);
   const setIsTappedOpen = useCanvasStore(state => state.setToolbarOpen);
 
+  if (isMobile) {
+    return (
+      <div className="fixed flex justify-center bottom-0 w-2/3 left-1/2 -translate-x-1/2 h-16 bg-neutral-950 rounded-t-2xl toolbar
+      items-center border-t border-r border-l border-t-zinc-800 border-zinc-900 border-1 shadow-2xl shadow-black">
+        <div
+          className={`flex flex-row justify-center gap-4 group-hover:opacity-100 transition-opacity duration-200`}
+        >
+          {tools.map(({ name, icon }) => (
+            <Button
+              key={name}
+              onClick={() => {
+                setTool(name);
+              }}
+              className={`${name}-tool rounded-xl`}
+              highlighted={tool === name}
+            >
+              <Icon iconName={icon} fontSize="18px" color="white" />
+            </Button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-2/3 sm:w-1/3 rounded-t-2xl bg-neutral-950 z-50 
         border-t border-r border-l border-t-zinc-700 border-zinc-800 group
         shadow-2xl shadow-black
-        ${isMobile ? "h-2" : "h-6 hover:h-20"}
+        ${isMobile ? "h-6" : "h-8 hover:h-20"}
         ${isTappedOpen ? "h-20" : "h-4"}
         flex justify-center items-center transition-all duration-150 toolbar`}
     >

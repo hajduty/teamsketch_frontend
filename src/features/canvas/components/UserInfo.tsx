@@ -20,7 +20,7 @@ export const UserInfo = () => {
 
   return (
     <>
-      <div className="fixed top-0 right-0 m-6">
+      <div className="fixed top-0 right-0 m-4">
         <button
           onClick={openModal}
           className="p-2 bg-blue-600 border border-blue-500 rounded-md flex hover:bg-blue-500 transition duration-75"

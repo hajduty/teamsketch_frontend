@@ -113,6 +113,7 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
       });
       setUserEmail("");
       setSuccessMessage("All done! Send this link to your friend:");
+      setError("");
       await fetchPermissions();
     } catch (err: any) {
       console.error("Add user failed", err);
@@ -160,7 +161,7 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
 
   return (
     <>
-      <div className="fixed top-0 right-16 m-6 z-10 share-canvas">
+      <div className="fixed top-0 right-14 m-4 z-2 share-canvas">
         <button
           onClick={openModal}
           className="p-2 bg-blue-600 border border-blue-500 rounded-md flex hover:bg-blue-500 transition duration-75"
@@ -185,42 +186,47 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
             onClick={closeModal}
           >
             <div
-              className={`bg-neutral-950 text-white rounded-md p-5 sm:w-auto w-5/6 max-h-[85vh] overflow-y-auto border border-neutral-700 flex flex-col gap-4 shadow-lg
+              className={`bg-neutral-950 text-white rounded-md p-5 sm:w-auto w-5/6 max-h-[85vh] overflow-y-auto overflow-clip border border-neutral-700 flex flex-col gap-4 shadow-lg
               transform transition-all duration-200 ease-in-out
               ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}
               `}
               onClick={(e) => e.stopPropagation()}
             >
-              <span className="flex flex-row justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Share Canvas</h2>
+              <div className="flex flex-row justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
+                    <Icon iconName="share" color="#3b82f6" fontSize="16px" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-white">Share Canvas</h2>
+                </div>
                 <Button
                   onClick={closeModal}
-                  className="hover:bg-neutral-700 border border-transparent p-1 rounded-md"
+                  className="hover:bg-neutral-800 border border-transparent p-1 rounded-md transition-colors"
                 >
                   <Icon iconName="close" color="white" fontSize="16px" />
                 </Button>
-              </span>
+              </div>
 
-              <div className="flex gap-2 mb-3">
+              <div className="flex gap-2 my-4 relative flex-wrap sm:flex-nowrap">
                 <input
                   placeholder="User email"
                   value={userEmail}
                   onChange={(e) => setUserEmail(e.target.value)}
-                  className="flex-1 rounded border border-neutral-600 bg-neutral-950 px-3 py-2 placeholder:text-neutral-400 text-white focus:outline-none"
+                  className="flex-1 min-w-0 rounded-md border border-neutral-600 bg-neutral-900 px-3 py-2 placeholder:text-neutral-400 text-white focus:outline-none"
                 />
 
                 <select
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value)}
-                  className="rounded border border-neutral-600 bg-neutral-950 px-2 py-2 text-white focus:outline-none"
+                  className="rounded-md border border-neutral-600 bg-neutral-900 px-2 py-2 text-sm text-white focus:outline-none min-w-0"
                 >
-                  <option value="viewer">Viewer</option>
-                  <option value="editor">Editor</option>
+                    <option value="viewer" className="text-xs">Viewer</option>
+                    <option value="editor" className="text-xs">Editor</option>
                 </select>
 
                 <button
                   onClick={addUser}
-                  className="flex m-auto p-2 rounded-sm text-white gap-1 bg-blue-600 hover:bg-blue-500 transition duration-75"
+                  className="flex items-center justify-center p-1 rounded-md text-white gap-1 bg-blue-600 hover:bg-blue-500 transition duration-75 whitespace-nowrap flex-shrink-0"
                 >
                   <Icon iconName="add" color="white" />
                   Add
@@ -247,14 +253,14 @@ export const ShareCanvas = ({ roomId }: { roomId: any }) => {
 
               <div>
                 <h3
-                  className="font-semibold mb-2 cursor-pointer flex items-center gap-1 select-none"
+                  className="font-regular mb-2 cursor-pointer flex items-center gap-1 select-none"
                   onClick={() => setIsAccordionOpen((prev) => !prev)}
                 >
                   <Icon
                     iconName={isAccordionOpen ? "expand_less" : "expand_more"}
                     color="white"
                   />
-                  Users with Access
+                  Added users
                 </h3>
 
                 <div

@@ -19,10 +19,10 @@ export const HistoryButtons = () => {
   }
 
   return (
-    <div className="bottom-0 right-0 flex md:flex-row flex-col gap-2 w-auto rounded-r-2xl fixed z-3 text-white group m-2 history-buttons">
+    <div className={`bottom-0 right-0 flex md:flex-row flex-col gap-2 w-auto rounded-r-2xl fixed z-3 text-white group m-2 history-buttons ${isMobile ? "":"flex-col-reverse"}`}>
       <button
         type="button"
-        className={`p-2 bg-neutral-950 border border-t-zinc-700 border-zinc-800 rounded-md flex ${canDelete ? "bg-neutral-950 hover:bg-zinc-800" : "bg-neutral-600 text-neutral-700"}`}
+        className={`p-2 bg-neutral-950 border border-t-zinc-700 border-zinc-800 rounded-md flex  ${canDelete ? "bg-neutral-950 hover:bg-zinc-800" : "bg-neutral-600 text-neutral-700"}`}
         onClick={handleDelete}
         disabled={!canDelete}
       >
