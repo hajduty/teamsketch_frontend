@@ -125,7 +125,7 @@ export const DeletePopup = ({
             >
               {isDeleting ? (
                 <>
-                  <Icon iconName="loading" />
+                  <Icon iconName="progress_activity" fontSize="12px"/>
                   Deleting...
                 </>
               ) : (
