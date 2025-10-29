@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import bg from '../../assets/bg.png';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthProvider';
 import axios from 'axios';
 import { apiRoutes } from '../../lib/apiRoutes';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
-  const { authenticated } = useAuth();
+  const location = useLocation();
+  const { authenticated, login } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (authenticated) navigate('/');
@@ -18,104 +21,158 @@ const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    // Client-side validation
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+
+    if (!password) {
+      setError('Please enter your password.');
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
-      await axios.post(apiRoutes.auth.register, { email, password });
-      navigate('/login');
-    } catch (err) {
-      console.error('Login failed', err);
-      setError(true);
+      const response = await axios.post(apiRoutes.auth.register, { email, password });
+      login(response.data.token, response.data.user);
+
+      const from = location.state?.from?.pathname;
+
+      if (from) {
+        navigate(from);
+      } else {
+        navigate('/', { replace: true });
+      }
+    } catch (err: any) {
+      console.error("Register failed", err);
+      const errorMessage = err.response?.data?.message || 'Invalid credentials. Please try again.';
+      setPassword("");
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-/*   const handleGuestLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      const email = getUUID();
-      const id = getUUID();
-
-      const user: User = { email: email, id: id };
-      login("none", user);
-    } catch(err) {
-      console.error('Login failed', err);
-      setError(true);
-    }
-  } */
-
   return (
-    <div className="flex h-screen md:flex-row flex-col">
-      <div className="md:w-2/3 lg:w-1/3 flex bg-neutral-900 flex-col justify-center items-center z-10 border-r border-neutral-700 p-4">
-        <form className="w-full max-w-sm" onSubmit={handleSubmit}>
-          <h1 className="text-3xl font-semibold text-white mb-10">Sign up</h1>
-
-          <div className="mb-4">
-            <label className="block text-neutral-300 text-sm mb-2" htmlFor="email">
-              Email
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-neutral-300 leading-tight focus:outline-none focus:shadow-outline bg-neutral-800 border-neutral-700"
-              id="email"
-/*                type="email"
- */               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-neutral-300 text-sm mb-2" htmlFor="password">
-              Password
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-neutral-300 leading-tight focus:outline-none focus:shadow-outline bg-neutral-800 border-neutral-700"
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          {error && <p className="text-red-500 text-sm mb-4">Invalid credentials. Try again.</p>}
-
-          <div
-            className="text-white flex flex-row gap-2 rounded focus:outline-none justify-center focus:shadow-outline mb-6"
-          >
-            Already have an account?
-            <Link to={"/login"}>
-              <button className='underline text-blue-400 cursor-pointer hover:text-blue-300' type='submit'>
-                Login
-              </button>
-            </Link>
-          </div>
-
-          <button
-            className="bg-green-700 hover:bg-green-500 text-white py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-            type="submit"
-          >
-            Sign up
-          </button>
-
-
-          <div className="flex items-center justify-center my-4">
-            <div className="border-t border-neutral-700 w-1/3"></div>
-            <p className="text-gray-400 mx-2 text-sm">or</p>
-            <div className="border-t border-neutral-700 w-1/3"></div>
-          </div>
-
-{/*           <button
-            className="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-            type="button"
-            onClick={handleGuestLogin}
-          >
-            Continue as guest
-          </button> */}
-        </form>
+    <div className="flex h-screen w-full flex-col md:flex-row">
+      <div className="fixed inset-0 md:hidden bg-black">
+        <img
+          src={bg}
+          alt=""
+          className="h-full w-full object-cover opacity-50 blur-xl"
+        />
       </div>
 
-      <div className="md:w-2/3 bg-neutral-950 md:block hidden">
-        <img src={bg} alt="Background" className="object-cover h-full w-full opacity-25 blur-lg" />
+      <div className="relative z-10 flex h-full w-full flex-col items-center justify-center p-6 md:w-1/2 lg:w-2/5 xl:w-1/3 md:bg-neutral-900 md:border-r md:border-neutral-700">
+        <div className="w-full max-w-md bg-neutral-900/70 backdrop-blur-sm rounded-2xl border border-neutral-700/50 p-8 md:bg-transparent md:backdrop-blur-none md:rounded-none md:border-none md:p-0">
+          <form className="w-full" onSubmit={handleSubmit}>
+            <h1 className="mb-8 text-3xl font-semibold text-white">Sign up</h1>
+
+            <div className="mb-4">
+              <label
+                className="mb-2 block text-sm font-medium text-neutral-300"
+                htmlFor="email"
+              >
+                Email
+              </label>
+              <input
+                className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2.5 text-neutral-300 shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                required
+                autoComplete="email"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label
+                className="mb-2 block text-sm font-medium text-neutral-300"
+                htmlFor="password"
+              >
+                Password
+              </label>
+              <input
+                className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2.5 text-neutral-300 shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+
+            <div className="mb-6 h-5">
+              {error && (
+                <p className="text-sm text-red-400 animate-in fade-in slide-in-from-top-1 duration-200">
+                  {error}
+                </p>
+              )}
+            </div>
+
+            <button
+              className="w-full rounded cursor-pointer bg-green-700 px-4 py-2.5 font-medium text-white transition-colors hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Registering...
+                </span>
+              ) : (
+                'Register'
+              )}
+            </button>
+
+            <div className="my-6 flex items-center justify-center">
+              <div className="h-px w-full bg-neutral-700"></div>
+              <div className="h-px w-full bg-neutral-700"></div>
+            </div>
+
+            <div className="text-center text-sm text-neutral-300">
+              Already registered?{' '}
+              <Link
+                to="/login"
+                className="font-medium text-blue-400 transition-colors hover:text-blue-300 focus:outline-none focus:underline"
+              >
+                Login
+              </Link>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div className="hidden flex-1 bg-neutral-950 md:block">
+        <img
+          src={bg}
+          alt=""
+          draggable={false}
+          className="h-full w-full object-cover opacity-25 blur-lg"
+        />
       </div>
     </div>
   );
