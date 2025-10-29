@@ -1,6 +1,5 @@
 import { FC, useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid";
 
 import apiClient from "../../../lib/apiClient";
 import { apiRoutes } from "../../../lib/apiRoutes";
@@ -14,6 +13,7 @@ import { useCanvasStore } from "../canvasStore";
 import { useIsMobile } from "../../../hooks/useIsMobile";
 import { Permissions } from "../../../types/permission";
 import React from "react";
+import { generateRoomId } from "../../../utils/utils";
 
 const cooldownMs = 1000;
 
@@ -81,7 +81,7 @@ const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
   const createNewRoom = useCallback(async () => {
     setCreating(true);
     try {
-      const uuid = uuidv4();
+      const uuid = generateRoomId();
       const permission: Permissions = {
         role: "Owner",
         room: uuid,

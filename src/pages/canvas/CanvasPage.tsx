@@ -1,23 +1,25 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { CanvasBoard } from "../features/canvas/Canvas";
-import { Toolbar } from "../features/canvas/components/Toolbar";
-import { ToolOptions } from "../features/canvas/components/ToolOptions";
-import { HistoryButtons } from "../features/canvas/components/HistoryButtons";
-import { ShareCanvas } from "../features/canvas/components/ShareCanvas";
-import { Permissions } from "../types/permission";
-import { CanvasList } from "../features/canvas/components/CanvasList";
-import { UserInfo } from "../features/canvas/components/UserInfo";
-import { useSignalR } from "../features/auth/ProtectedRoute";
-import { v4 as uuidv4 } from 'uuid';
+import { CanvasBoard } from "../../features/canvas/Canvas";
+import { Toolbar } from "../../features/canvas/components/Toolbar";
+import { ToolOptions } from "../../features/canvas/components/ToolOptions";
+import { HistoryButtons } from "../../features/canvas/components/HistoryButtons";
+import { ShareCanvas } from "../../features/canvas/components/ShareCanvas";
+import { Permissions } from "../../types/permission";
+import { CanvasList } from "../../features/canvas/components/CanvasList";
+import { UserInfo } from "../../features/canvas/components/UserInfo";
+import { useSignalR } from "../../features/auth/ProtectedRoute";
 
 import Joyride, { Step, STATUS, CallBackProps } from "react-joyride";
-import { useCanvasStore } from "../features/canvas/canvasStore";
-import { Button } from "../components/Button";
-import Icon from "../components/Icon";
-import apiClient from "../lib/apiClient";
-import { useAuth } from "../features/auth/AuthProvider";
-import { apiRoutes } from "../lib/apiRoutes";
+import { useCanvasStore } from "../../features/canvas/canvasStore";
+import { Button } from "../../components/Button";
+import Icon from "../../components/Icon";
+import apiClient from "../../lib/apiClient";
+import { useAuth } from "../../features/auth/AuthProvider";
+import { apiRoutes } from "../../lib/apiRoutes";
+import { generateRoomId } from "../../utils/utils";
+import { RoomNotFound } from "./RoomNotFound";
+import { ErrorPage } from "../ErrorPage";
 
 export const CanvasWrapper = () => {
   const { roomId } = useParams();
@@ -26,7 +28,7 @@ export const CanvasWrapper = () => {
 
   const createNewRoom = async (): Promise<string | undefined> => {
     try {
-      const uuid = uuidv4();
+      const uuid = generateRoomId();
       const permission: Permissions = {
         role: "Owner",
         room: uuid,
@@ -66,7 +68,11 @@ export const CanvasWrapper = () => {
     ensureRoomExists();
   }, [roomId, location.pathname, navigate, user?.id]);
 
-  if (!roomId) return <></>;
+  if (!roomId) {
+    return (
+      <ErrorPage/>
+    );
+  }
 
   return <CanvasPage roomId={roomId} />;
 };
@@ -75,7 +81,7 @@ export const CanvasWrapper = () => {
 function CanvasPage({ roomId }: { roomId: string }) {
   const [permission, setPermission] = useState<Permissions>();
   const { connection } = useSignalR();
-
+  const [loading, setLoading] = useState(true);
   const [run, setRun] = useState(false);
   const [steps] = useState<Step[]>([
     {
@@ -163,10 +169,13 @@ function CanvasPage({ roomId }: { roomId: string }) {
         const roomPerm = await connection.invoke<Permissions>("GetPermission", roomId);
         if (isMounted && roomPerm) {
           setPermission(roomPerm);
-          console.log("Permissions loaded:", roomPerm);
+        } else {
+          setPermission(null!);
         }
       } catch (err) {
         console.error("Failed to load permissions:", err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
 
@@ -179,14 +188,38 @@ function CanvasPage({ roomId }: { roomId: string }) {
 
   if (!roomId) return null;
 
-  if (permission == null) {
+    if (loading) {
+    return (
+      <div className="h-screen w-screen flex justify-center items-center bg-neutral-950">
+        <svg
+          className="h-4 w-4 text-white animate-spin"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+          />
+        </svg>
+      </div>
+    )
+  }
+
+  if (!permission) {
     return (
       <>
-        <CanvasList roomId={roomId!} />
+        <RoomNotFound />
         <UserInfo />
-        <div className="flex h-screen w-screen justify-center items-center bg-neutral-950">
-          <h1 className="text-white text-2xl select-none">This room does not exist.</h1>
-        </div>
       </>
     )
   }
