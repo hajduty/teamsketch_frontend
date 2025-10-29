@@ -3,7 +3,8 @@ import { Route, Routes } from 'react-router-dom';
 import SignIn from './pages/auth/Login';
 import ProtectedRoute from './features/auth/ProtectedRoute';
 import Register from './pages/auth/Register';
-import { CanvasWrapper } from './pages/CanvasPage';
+import { CanvasWrapper } from './pages/canvas/CanvasPage';
+import { ErrorPage } from './pages/ErrorPage';
 
 const App = () => {
   return (
@@ -13,6 +14,7 @@ const App = () => {
       <Route element={<ProtectedRoute />}>
         <Route path=":roomId?" element={<CanvasWrapper />} />
       </Route>
+      <Route path="*" element={<ErrorPage />} />
     </Routes>
   );
 };

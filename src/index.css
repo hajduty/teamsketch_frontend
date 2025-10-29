@@ -7,6 +7,10 @@
     --color-button: #0D0D0D;
 }
 
+@utility no-scrollbar {
+  @apply [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
+}
+
 .material-symbols-outlined {
     font-family: 'Material Symbols', sans-serif;
     font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
@@ -41,6 +45,7 @@
   width: 0;
   height: 0;
 }
+
 
 html, body {
   height: 100%;
