@@ -1,4 +1,4 @@
-import { FC, useEffect, useState, useCallback, useMemo } from "react";
+import { FC, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import apiClient from "../../../lib/apiClient";
@@ -31,6 +31,8 @@ const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
   const [creating, setCreating] = useState(false);
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Permissions | null>(null);
+  
+  const handlersRegistered = useRef(false);
 
   const fetchRooms = useCallback(async () => {
     if (guest) {
@@ -51,29 +53,57 @@ const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
   }, [guest, guestRooms, connection]);
 
   useEffect(() => {
-    const setupListeners = async () => {
-      await fetchRooms();
-      if (!connection) return;
+    if (!connection || handlersRegistered.current) return;
 
-      connection.on("PermissionChanged", (updatedRoom: Permissions) => {
-        if (!updatedRoom) return;
-        setRooms(prev => prev.filter(r => r.room !== updatedRoom.room));
-      });
+    fetchRooms();
 
-      connection.on("PermissionAdded", (updatedRoom: Permissions) => {
-        if (!updatedRoom) return;
-
-        updatedRoom.createdAt = new Date();
-        updatedRoom.userId = user?.id!;
-        updatedRoom.userEmail = user?.email!;
-
-        setRooms(prev =>
-          prev.some(r => r.room === updatedRoom.room) ? prev : [...prev, updatedRoom]
-        );
+    // Use functional updates to avoid stale closures
+    const handlePermissionChanged = (updatedRoom: Permissions) => {
+      if (!updatedRoom) return;
+      console.log("PermissionChanged:", updatedRoom.room);
+      
+      setRooms(prev => {
+        const filtered = prev.filter(r => r.room !== updatedRoom.room);
+        if (filtered.length !== prev.length) {
+          console.log("Room removed from list:", updatedRoom.room);
+        }
+        return filtered;
       });
     };
 
-    setupListeners();
+    const handlePermissionAdded = (updatedRoom: Permissions) => {
+      if (!updatedRoom || !updatedRoom.room) {
+        console.warn("PermissionAdded received invalid data:", updatedRoom);
+        return;
+      }
+      console.log("PermissionAdded:", updatedRoom.room);
+
+      setRooms(prev => {
+        const exists = prev.some(r => r.room === updatedRoom.room);
+        if (exists) {
+          console.log("Room already exists, skipping:", updatedRoom.room);
+          return prev;
+        }
+        
+        console.log("Adding new room to list:", updatedRoom.room);
+        return [...prev, {
+          ...updatedRoom,
+          createdAt: updatedRoom.createdAt || new Date(),
+          userId: updatedRoom.userId || user?.id!,
+          userEmail: updatedRoom.userEmail || user?.email!,
+        }];
+      });
+    };
+
+    connection.on("PermissionChanged", handlePermissionChanged);
+    connection.on("PermissionAdded", handlePermissionAdded);
+    handlersRegistered.current = true;
+
+    return () => {
+      connection.off("PermissionChanged", handlePermissionChanged);
+      connection.off("PermissionAdded", handlePermissionAdded);
+      handlersRegistered.current = false;
+    };
   }, [connection, fetchRooms, user?.id, user?.email]);
 
   const toggleCollapse = useCallback(() => setCollapsed(!collapsed), [collapsed, setCollapsed]);
@@ -92,11 +122,7 @@ const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
       const response = await apiClient.post(apiRoutes.permission.add, permission);
       const newRoom: Permissions = response.data;
 
-      setTimeout(() => {
-        setRooms(prev =>
-          prev.some(r => r.room === newRoom.room) ? prev : [...prev, newRoom]
-        );
-      }, 1000);
+      console.log("Room created, waiting for SignalR event:", newRoom.room);
 
       return newRoom.room;
     } catch (err) {
@@ -197,7 +223,7 @@ const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
                     : ""
                 }
               >
-                {rooms.length === 0 ? (
+                {sortedRooms.length === 0 ? (
                   <NewRoomButton createNewRoom={createNewRoom} creating={creating} cooldownMs={cooldownMs} />
                 ) : (
                   <ul className="space-y-2 max-h-96 overflow-auto scrollbar-thin pr-1 pl-2">
@@ -213,7 +239,7 @@ const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
         </div>
       </div>
     );
-  }, [collapsed, createNewRoom, isMobile, rooms, RoomItem, sortedRooms, toggleCollapse, creating]);
+  }, [collapsed, createNewRoom, isMobile, sortedRooms, RoomItem, toggleCollapse, creating]);
 
   return (
     <>
