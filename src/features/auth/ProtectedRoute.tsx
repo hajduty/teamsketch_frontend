@@ -14,7 +14,7 @@ const SignalRContext = createContext<SignalRContextType>({
   isConnected: false,
 });
 
-const PERMISSION_URL = import.meta.env.VITE_API_PERMISSION_URL || "https://localhost:7122/api";
+const PERMISSION_URL = import.meta.env.VITE_API_PERMISSION_URL || "https://localhost:7100/api";
 
 export const useSignalR = () => useContext(SignalRContext);
 

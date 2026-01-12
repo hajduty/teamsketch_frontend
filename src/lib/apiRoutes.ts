@@ -1,6 +1,6 @@
-const AUTH_URL = import.meta.env.VITE_API_AUTH_URL || "https://localhost:7154/api/";
-const PERMISSION_URL = import.meta.env.VITE_API_PERMISSION_URL || "https://localhost:7122/api";
-const ROOM_URL = import.meta.env.VITE_API_ROOM_URL || "https://localhost:5001/api";
+const AUTH_URL = import.meta.env.VITE_API_AUTH_URL || "https://localhost:8081/api/";
+const PERMISSION_URL = import.meta.env.VITE_API_PERMISSION_URL || "https://localhost:8083/api";
+const ROOM_URL = import.meta.env.VITE_API_ROOM_URL || "https://localhost:3002/api";
 
 export const apiRoutes = {
   auth: {
