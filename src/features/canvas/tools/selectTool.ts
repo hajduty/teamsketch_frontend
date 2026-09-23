@@ -17,7 +17,7 @@ export const SelectTool: Tool = {
   ): ToolHandlers => {    
     const handleClick = (e: any) => {
       const node = e.target;
-      const validTypes = ['Text', 'Line'];
+      const validTypes = ['Text', 'Line', 'Arrow', 'Shape'];
     
       const targetNode = validTypes.includes(node.getClassName())
         ? node
