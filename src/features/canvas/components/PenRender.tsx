@@ -73,10 +73,13 @@ const PenRender: FC<PenRenderProps> = ({
 
   if (!hasPoints) return null;
 
-  const hitStrokeWidth =
+  // Never narrower than the stroke itself (strokes drawn zoomed out can be very wide)
+  const hitStrokeWidth = Math.max(
+    width,
     obj.scaleX && obj.scaleX !== 0
       ? Math.min(400, Math.max(20, Math.round(20 / obj.scaleX)))
-      : 20;
+      : 20
+  );
 
   const common = {
     ref: shapeRef,

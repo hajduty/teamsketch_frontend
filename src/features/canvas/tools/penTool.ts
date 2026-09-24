@@ -39,7 +39,10 @@ export const PenTool: Tool = {
       yPath.set('type', 'path');
       yPath.set('points', yPoints);
       yPath.set('color', options.color);
-      yPath.set('strokeWidth', Number(options.size) || 5);
+      // Weight is in screen pixels at the current zoom, so the brush feels the same
+      // size whether zoomed in or out; the stored width is in canvas units.
+      const stageScale = stage.scaleX() || 1;
+      yPath.set('strokeWidth', (Number(options.size) || 5) / stageScale);
       yPath.set('toolType', 'pen');
       yPath.set('opacity', options.opacity ?? 1);
       yPath.set('lineStyle', options.lineStyle ?? 'solid');
