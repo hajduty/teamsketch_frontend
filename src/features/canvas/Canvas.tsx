@@ -227,6 +227,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const {
     wrappedHandleMouseMove,
     handleWheelZoom,
+    handleStageDragStart,
     handleStageDragEnd,
   } = useCanvasInteractions({
     stageRef,
@@ -277,6 +278,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         scale={{ x: stageScale, y: stageScale }}
         position={stagePosition}
         onWheel={handleWheelZoom}
+        onDragStart={handleStageDragStart}
         onDragEnd={handleStageDragEnd}
         onTouchStart={!isSpacePressed && !isToolsDisabled ? handleMouseDown : undefined}
         onTouchMove={!isSpacePressed ? wrappedHandleMouseMove : undefined}
