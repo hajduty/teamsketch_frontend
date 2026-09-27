@@ -45,7 +45,7 @@ const arcFractions = (flat: number[]): number[] => {
 };
 
 /** Map pressures sampled on `from` onto the (differently sampled) polyline `to`, by arc length. */
-const resamplePressures = (from: number[], pressures: number[], to: number[]): number[] => {
+export const resamplePressures = (from: number[], pressures: number[], to: number[]): number[] => {
   const fFrom = arcFractions(from);
   const fTo = arcFractions(to);
   let j = 0;

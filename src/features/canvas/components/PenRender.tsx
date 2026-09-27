@@ -5,7 +5,7 @@ import { CanvasObject } from "../tools/baseTool";
 import { useTransformer } from "../../../hooks/useTransformer";
 import * as Y from "yjs";
 import { smoothPathPoints } from "../../../utils/smoothPoints";
-import { arrowSize, buildTaperedStroke, dashFor } from "../../../utils/penStroke";
+import { arrowSize, buildTaperedStroke, dashFor, speedPressures } from "../../../utils/penStroke";
 import React from "react";
 
 interface PenRenderProps {
@@ -21,6 +21,7 @@ const PenRender: FC<PenRenderProps> = ({
   obj,
   yObjects,
   updateObjectsFromYjs,
+  stageRef,
   //userId
 }) => {
   const {
@@ -42,23 +43,34 @@ const PenRender: FC<PenRenderProps> = ({
   const taper = shape ? "none" : obj.taper ?? "none";
   const hasPoints = Array.isArray(obj.points);
 
+  // Finished strokes store their already-smoothed curve; only strokes in progress
+  // (and ones saved before that) are smoothed here
   const smoothPoints = useMemo(
-    () => (!hasPoints ? [] : shape ? obj.points : smoothPathPoints(obj.points)),
-    [obj.points, shape]
+    () => (!hasPoints ? [] : shape || obj.smoothed ? obj.points : smoothPathPoints(obj.points)),
+    [obj.points, shape, obj.smoothed]
   );
+
+  // While drawing a speed-tapered stroke, derive pressure the same way the tool will on
+  // release, so the width doesn't jump when the stroke is finished
+  const pressures = useMemo(() => {
+    if (obj.pressures || taper !== "speed" || !hasPoints) return obj.pressures;
+    const raw: { x: number; y: number }[] = [];
+    for (let i = 0; i + 1 < obj.points.length; i += 2) raw.push({ x: obj.points[i], y: obj.points[i + 1] });
+    return speedPressures(raw, stageRef?.current?.scaleX?.() ?? 1);
+  }, [obj.pressures, obj.points, taper]);
 
   const tapered = useMemo(() => {
     if (taper === "none" || !hasPoints) return null;
     return buildTaperedStroke({
       centerline: smoothPoints,
       rawPoints: obj.points,
-      pressures: obj.pressures,
+      pressures,
       width,
       taper,
       arrowStart: obj.arrowStart,
       arrowEnd: obj.arrowEnd,
     });
-  }, [smoothPoints, obj.pressures, width, taper, obj.arrowStart, obj.arrowEnd]);
+  }, [smoothPoints, pressures, width, taper, obj.arrowStart, obj.arrowEnd]);
 
   // Custom shapes report a zero-size box by default; give the transformer the outline's bounds.
   useEffect(() => {
@@ -183,6 +195,7 @@ const areEqual = (prevProps: PenRenderProps, nextProps: PenRenderProps) => {
     a.arrowStart === b.arrowStart &&
     a.arrowEnd === b.arrowEnd &&
     a.shape === b.shape &&
+    a.smoothed === b.smoothed &&
     a.x === b.x &&
     a.y === b.y &&
     a.rotation === b.rotation &&

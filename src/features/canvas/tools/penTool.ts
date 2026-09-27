@@ -7,7 +7,8 @@ import { Tool, ToolHandlers, ToolOptions } from './baseTool';
 import * as Y from 'yjs';
 import simplify from 'simplify-js';
 import { getTransformedPointer } from '../../../utils/utils';
-import { speedPressures } from '../../../utils/penStroke';
+import { resamplePressures, speedPressures } from '../../../utils/penStroke';
+import { smoothPathPoints } from '../../../utils/smoothPoints';
 import { followPointer, lazyRadius } from '../../../utils/stability';
 import { recognizeShape } from '../../../utils/shapeRecognition';
 
@@ -119,15 +120,23 @@ export const PenTool: Tool = {
           return;
         }
 
-        // simplify-js returns a subset of the input objects, so `i` still points at the raw sample
-        const simplified = simplify(formattedPoints, Number(options.simplify) || 1, false) as typeof formattedPoints;
-        const flattenedSimplified = simplified.flatMap(p => [p.x, p.y]);
+        // Store the smoothed curve that was on screen while drawing (not a re-fit of fewer
+        // points), so the stroke doesn't change shape on release. Simplify only drops points
+        // within the tolerance, measured in screen pixels.
+        const shown = smoothPathPoints(rawPoints);
+        const shownPoints: { x: number; y: number }[] = [];
+        for (let i = 0; i + 1 < shown.length; i += 2) shownPoints.push({ x: shown[i], y: shown[i + 1] });
+        const tolerance = (Number(options.simplify) || 0.5) / stageScale;
+        const flattenedSimplified = shownPoints.length >= 2
+          ? simplify(shownPoints, tolerance, true).flatMap(p => [p.x, p.y])
+          : [];
 
         if (flattenedSimplified.length > 2) {
           Y.transact(yPath.doc as Y.Doc, () => {
             yPoints.delete(0, yPoints.length);
             yPoints.push(flattenedSimplified);
-            if (isSpeedTaper) yPath.set('pressures', simplified.map(p => rawPressures[p.i]));
+            yPath.set('smoothed', true);
+            if (isSpeedTaper) yPath.set('pressures', resamplePressures(rawPoints, rawPressures, flattenedSimplified));
           }, _userId);
         } else if (isSpeedTaper) {
           Y.transact(yPath.doc as Y.Doc, () => {
