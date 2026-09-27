@@ -12,6 +12,7 @@ import { useIsDoubleClick } from "../../hooks/useIsDoubleClick";
 import { CursorsOverlay } from "./components/CursorOverlay";
 import { SelectTool } from "./tools/selectTool";
 import InfiniteGrid from "./components/InfiniteGrid";
+import { Minimap } from "./components/Minimap";
 import { useAuth } from "../auth/AuthProvider";
 import { useCanvasStore } from "./canvasStore";
 import Konva from "konva";
@@ -316,6 +317,14 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
           <CursorsOverlay cursors={otherCursors} scale={stageScale} />
         </Layer>
       </Stage>
+      <Minimap
+        stageRef={stageRef}
+        objects={objects}
+        stageScale={stageScale}
+        stagePosition={stagePosition}
+        setStagePosition={setStagePosition}
+        roomId={roomId}
+      />
     </>
   );
 };
