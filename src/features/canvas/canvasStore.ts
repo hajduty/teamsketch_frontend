@@ -51,6 +51,13 @@ export const useCanvasStore = create<CanvasStore>(
     options: {
       color: 'white',
       size: 5,
+      opacity: 1,
+      lineStyle: 'solid',
+      taper: 'none',
+      arrowStart: false,
+      arrowEnd: false,
+      stabilizer: 0,
+      smartShapes: false,
       fontSize: 16,
       fontFamily: 'Arial',
     },

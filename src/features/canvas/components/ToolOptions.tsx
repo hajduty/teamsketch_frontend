@@ -4,14 +4,61 @@ import { Color } from "../../../components/Color";
 import { useCanvasStore } from "../canvasStore";
 import { useIsMobile } from "../../../hooks/useIsMobile";
 import { PinComponent } from "../../../components/Pin";
+import Icon from "../../../components/Icon";
+
+type SegmentOption<T> = { value: T; label: string };
+
+const Segmented = <T extends string>({ value, options, onChange, disabled }: {
+  value: T;
+  options: SegmentOption<T>[];
+  onChange: (value: T) => void;
+  disabled?: boolean;
+}) => (
+  <div className={`flex w-full text-xs border border-zinc-600 ${disabled ? "opacity-40 pointer-events-none" : ""}`}>
+    {options.map(option => (
+      <button
+        key={option.value}
+        type="button"
+        onClick={() => onChange(option.value)}
+        className={`flex-1 px-1 py-1 cursor-pointer duration-100 ${value === option.value ? "bg-blue-500" : "hover:bg-zinc-800"}`}
+      >
+        {option.label}
+      </button>
+    ))}
+  </div>
+);
+
+const Toggle = ({ active, onClick, icon, title }: { active: boolean; onClick: () => void; icon: string; title: string }) => (
+  <button
+    type="button"
+    title={title}
+    onClick={onClick}
+    className={`flex-1 flex justify-center py-1 cursor-pointer duration-100 ${active ? "bg-blue-500" : "hover:bg-zinc-800"}`}
+  >
+    <Icon iconName={icon} fontSize="16px" color="white" />
+  </button>
+);
+
+const Switch = ({ checked, onChange, disabled }: { checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    onClick={() => onChange(!checked)}
+    className={`relative w-8 h-4 rounded-full border border-zinc-600 duration-100 cursor-pointer
+      ${checked ? "bg-blue-500" : "bg-zinc-900"} ${disabled ? "opacity-40 pointer-events-none" : ""}`}
+  >
+    <span className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full bg-white duration-100 ${checked ? "translate-x-4" : ""}`} />
+  </button>
+);
 
 const PenOptions = () => {
   const options = [2, 8, 32, 64];
   const simplifyOptions = [0.5, 1, 2.5, 3];
-  const tensionOptions = [0.5, 1, 2.5, 3];
 
   const setOption = useCanvasStore(state => state.setOption);
-  const currentColor = useCanvasStore().options.color;
+  const { color: currentColor, opacity, lineStyle, taper, arrowStart, arrowEnd, stabilizer, smartShapes } =
+    useCanvasStore(state => state.options);
 
   return (
     <>
@@ -36,9 +83,54 @@ const PenOptions = () => {
                 <Color onChange={(value: any) => setOption("color", value)} value={currentColor} />
               </div>
             </div>
+            <div className="flex flex-row gap-3 items-center justify-between mt-2">
+              <p className="text-sm font-light">Opacity</p>
+              <div className="w-22 flex items-center gap-1">
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  step={5}
+                  value={Math.round((opacity ?? 1) * 100)}
+                  onChange={(e) => setOption("opacity", Number(e.target.value) / 100)}
+                  className="w-full accent-blue-500 cursor-pointer"
+                />
+                <span className="text-xs w-8 text-right">{Math.round((opacity ?? 1) * 100)}%</span>
+              </div>
+            </div>
           </div>
           <div>
-            <h1 className="text-md font-medium mb-2">Smoothness</h1>
+            <h1 className="text-md font-medium mb-1">Style</h1>
+            <p className="text-sm font-light mb-1">Line</p>
+            <Segmented
+              value={lineStyle ?? "solid"}
+              onChange={(value) => setOption("lineStyle", value)}
+              disabled={taper !== "none"}
+              options={[
+                { value: "solid", label: "Solid" },
+                { value: "dashed", label: "Dash" },
+                { value: "dotted", label: "Dot" },
+              ]}
+            />
+            {taper !== "none" && <p className="text-xs text-zinc-400 mt-1">Dashes need taper off</p>}
+            <p className="text-sm font-light mb-1 mt-2">Taper</p>
+            <Segmented
+              value={taper ?? "none"}
+              onChange={(value) => setOption("taper", value)}
+              options={[
+                { value: "none", label: "None" },
+                { value: "ends", label: "Ends" },
+                { value: "speed", label: "Speed" },
+              ]}
+            />
+            <p className="text-sm font-light mb-1 mt-2">Arrows</p>
+            <div className="flex w-full border border-zinc-600">
+              <Toggle title="Arrow at start" icon="arrow_back" active={!!arrowStart} onClick={() => setOption("arrowStart", !arrowStart)} />
+              <Toggle title="Arrow at end" icon="arrow_forward" active={!!arrowEnd} onClick={() => setOption("arrowEnd", !arrowEnd)} />
+            </div>
+          </div>
+          <div>
+            <h1 className="text-md font-medium mb-1">Stability</h1>
             <div className="flex flex-row gap-6 items-center justify-between">
               <p className="text-sm font-light">Simplify</p>
               <div className="w-22">
@@ -49,15 +141,24 @@ const PenOptions = () => {
                 />
               </div>
             </div>
-            <div className="flex flex-row gap-6 items-center justify-between mt-2">
-              <p className="text-sm font-light">Tension</p>
-              <div className="w-22">
-                <EditableDropdown
-                  options={tensionOptions}
-                  placeholder="0.5"
-                  onChange={(value: any) => setOption("tension", value)}
+            <div className="flex flex-row gap-3 items-center justify-between mt-2" title="Smooths out hand jitter; the line trails your cursor">
+              <p className="text-sm font-light">Stabilizer</p>
+              <div className="w-22 flex items-center gap-1">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={stabilizer ?? 0}
+                  onChange={(e) => setOption("stabilizer", Number(e.target.value))}
+                  className="w-full accent-blue-500 cursor-pointer"
                 />
+                <span className="text-xs w-8 text-right">{stabilizer ?? 0}</span>
               </div>
+            </div>
+            <div className="flex flex-row gap-3 items-center justify-between mt-2" title="Rough rectangles, squares, circles and ellipses snap into clean shapes">
+              <p className="text-sm font-light">Smart shapes</p>
+              <Switch checked={!!smartShapes} onChange={(value) => setOption("smartShapes", value)} />
             </div>
           </div>
         </div>

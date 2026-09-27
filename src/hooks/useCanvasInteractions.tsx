@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import throttle from "lodash/throttle";
 import Konva from "konva";
 import { getTransformedPointer } from "../utils/utils";
@@ -63,6 +63,20 @@ export function useCanvasInteractions({
     debouncedSetCursor(pointerPos.x, pointerPos.y);
   }, [isToolsDisabled, handleMouseMove, stageRef, providerRef, debouncedSetCursor]);
 
+  // Hand cursor while panning: "grab" with Space held, "grabbing" while dragging
+  const spaceHeldRef = useRef(false);
+  const setCursor = useCallback((cursor: string) => {
+    const container = stageRef.current?.container();
+    if (container) container.style.cursor = cursor;
+  }, [stageRef]);
+
+  const releaseSpace = useCallback(() => {
+    spaceHeldRef.current = false;
+    stageRef.current?.draggable(false);
+    setIsSpacePressed(false);
+    setCursor("");
+  }, [stageRef, setIsSpacePressed, setCursor]);
+
   // Space key toggles draggable
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (editing) return;
@@ -70,17 +84,25 @@ export function useCanvasInteractions({
     if (e.code === "Space") {
       stageRef.current?.draggable(true);
       setIsSpacePressed(true);
+      if (!spaceHeldRef.current) {
+        spaceHeldRef.current = true;
+        setCursor(stageRef.current?.isDragging() ? "grabbing" : "grab");
+      }
     }
-  }, [stageRef, setIsSpacePressed, editing]);
+  }, [stageRef, setIsSpacePressed, setCursor, editing]);
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
     if (editing) return;
 
     if (e.code === "Space") {
-      stageRef.current?.draggable(false);
-      setIsSpacePressed(false);
+      releaseSpace();
     }
-  }, [stageRef, setIsSpacePressed, editing]);
+  }, [releaseSpace, editing]);
+
+  // Stage drag start (only the stage itself, not objects being moved)
+  const handleStageDragStart = useCallback((e: any) => {
+    if (e.target === stageRef.current) setCursor("grabbing");
+  }, [stageRef, setCursor]);
 
   // Wheel zoom handler
   const handleWheelZoom = useCallback((e: any) => {
@@ -114,20 +136,27 @@ export function useCanvasInteractions({
 
   // Drag end handler
   const handleStageDragEnd = useCallback((e: any) => {
+    if (e.target === stageRef.current) setCursor(spaceHeldRef.current ? "grab" : "");
     setStagePosition(e.target.position());
     //console.log(e.target.position());
     useCanvasStore.getState().saveStageState(roomId, { x: e.target.position().x, y: e.target.position().y });
-  }, [setStagePosition]);
+  }, [setStagePosition, setCursor]);
 
   // Attach key listeners
   useEffect(() => {
+    // Space released outside the window (e.g. alt-tab) never fires keyup; don't get stuck panning
+    const handleBlur = () => {
+      if (spaceHeldRef.current) releaseSpace();
+    };
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
     };
-  }, [handleKeyDown, handleKeyUp]);
+  }, [handleKeyDown, handleKeyUp, releaseSpace]);
 
   // Mobile handlers
   useEffect(() => {
@@ -205,6 +234,7 @@ export function useCanvasInteractions({
     handleKeyDown,
     handleKeyUp,
     handleWheelZoom,
+    handleStageDragStart,
     handleStageDragEnd,
   };
 }
