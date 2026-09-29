@@ -74,15 +74,17 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const currentState = useRef<any>({});
 
   // Yjs setup
-  const ydoc = useRef(new Y.Doc()).current;
-  const yObjects = useRef(ydoc.getMap<any>("objects")).current;
+  // Lazy initialisers: useRef(new ...) would build a new doc/undo manager on every render,
+  // and each undo manager stays subscribed to the doc
+  const [ydoc] = useState(() => new Y.Doc());
+  const [yObjects] = useState(() => ydoc.getMap<any>("objects"));
   const providerRef = useRef<WebsocketProvider | null>(null);
   const awarenessRef = useRef<any>(null);
   const [otherCursors, setOtherCursors] = useState<AwarenessState[]>([]);
 
-  const undoManager = useRef(new Y.UndoManager(yObjects, {
+  const [undoManager] = useState(() => new Y.UndoManager(yObjects, {
     captureTimeout: 200,
-  })).current;
+  }));
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const isToolsDisabled = role === "none" || role === "viewer" || role === "";
