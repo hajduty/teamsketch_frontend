@@ -5,11 +5,12 @@ import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { PenTool } from "./tools/penTool";
 import { TextTool } from "./tools/textTool";
-import { AwarenessState, CanvasObject, Tool } from "./tools/baseTool";
+import { CanvasObject, Tool } from "./tools/baseTool";
 import { TextRender } from "./components/TextRender";
 import PenRender from "./components/PenRender";
 import { useIsDoubleClick } from "../../hooks/useIsDoubleClick";
-import { CursorsOverlay } from "./components/CursorOverlay";
+import { RemoteCursors } from "./components/RemoteCursors";
+import { colorFor } from "./presence";
 import { SelectTool } from "./tools/selectTool";
 import InfiniteGrid from "./components/InfiniteGrid";
 import { Minimap } from "./components/Minimap";
@@ -103,7 +104,8 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const [yObjects] = useState(() => ydoc.getMap<any>("objects"));
   const providerRef = useRef<WebsocketProvider | null>(null);
   const awarenessRef = useRef<any>(null);
-  const [otherCursors, setOtherCursors] = useState<AwarenessState[]>([]);
+  // Set once connected, for the cursor overlay
+  const [awareness, setAwareness] = useState<any>(null);
 
   const [undoManager] = useState(() => new Y.UndoManager(yObjects, {
     captureTimeout: 200,
@@ -256,15 +258,12 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     awarenessRef.current.setLocalState({
       userId: user?.id,
       username: user?.email,
-      cursorPosition: { x: 0, y: 0 },
+      color: colorFor(user?.id),
+      cursorPosition: null,
     });
 
     const awareness = awarenessRef.current;
-    const handleAwareness = () => {
-      const states = Array.from(awareness.getStates().values()) as AwarenessState[];
-      setOtherCursors(states.filter(s => s.username !== user?.email));
-    };
-    awareness.on('change', handleAwareness);
+    setAwareness(awareness);
 
     // Only re-read the objects the transaction touched (while drawing, just the stroke)
     const handleObjects = (events: Y.YEvent<any>[]) => {
@@ -295,7 +294,6 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     }
 
     return () => {
-      awareness.off('change', handleAwareness);
       yObjects.unobserveDeep(handleObjects);
       providerRef.current?.off('status', handleStatus);
       providerRef.current?.off('sync', handleSync);
@@ -423,9 +421,9 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         <InfiniteGrid stageRef={stageRef} roomId={roomId} />
         <Layer>
           {renderedObjects}
-          <CursorsOverlay cursors={otherCursors} scale={stageScale} />
         </Layer>
       </Stage>
+      <RemoteCursors stageRef={stageRef} awareness={awareness} />
       {quickMenu && <QuickMenu x={quickMenu.x} y={quickMenu.y} onClose={closeQuickMenu} />}
       <Minimap
         stageRef={stageRef}

@@ -18,10 +18,12 @@ export interface CanvasObject {
 export interface AwarenessState {
   userId: string;
   username: string;
+  // Canvas coordinates; null until the pointer is on the canvas
   cursorPosition: {
     x: number;
     y: number;
-  };
+  } | null;
+  color?: string;
   role: string;
 }
 

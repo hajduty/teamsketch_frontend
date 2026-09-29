@@ -49,6 +49,34 @@ export function useCanvasInteractions({
     return () => debouncedSetCursor.cancel();
   }, [debouncedSetCursor]);
 
+  // Hide our cursor from others while the pointer is off the canvas (over the UI or outside the window)
+  // (listens on the document: the stage only mounts once the room has connected)
+  useEffect(() => {
+    let onCanvas = false;
+    const leave = () => {
+      if (!onCanvas) return;
+      onCanvas = false;
+      debouncedSetCursor.cancel();
+      providerRef.current?.awareness.setLocalStateField("cursorPosition", null);
+    };
+    const onOver = (e: PointerEvent) => {
+      const container = stageRef.current?.container();
+      if (container?.contains(e.target as Node)) onCanvas = true;
+      else leave();
+    };
+    const onOut = (e: PointerEvent) => {
+      if (!e.relatedTarget) leave(); // left the window
+    };
+    document.addEventListener("pointerover", onOver);
+    document.addEventListener("pointerout", onOut);
+    window.addEventListener("blur", leave);
+    return () => {
+      document.removeEventListener("pointerover", onOver);
+      document.removeEventListener("pointerout", onOut);
+      window.removeEventListener("blur", leave);
+    };
+  }, [stageRef, providerRef, debouncedSetCursor]);
+
   // Wrapped mouse move handler that updates awareness cursor
   const wrappedHandleMouseMove = useCallback((e: any) => {
     if (isToolsDisabled) return;
