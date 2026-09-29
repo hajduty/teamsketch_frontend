@@ -18,10 +18,16 @@ export interface CanvasObject {
 export interface AwarenessState {
   userId: string;
   username: string;
+  // Canvas coordinates; null until the pointer is on the canvas
   cursorPosition: {
     x: number;
     y: number;
-  };
+  } | null;
+  // What this user is looking at: the canvas point at the centre of their screen, and their zoom
+  view?: { x: number; y: number; scale: number } | null;
+  // Date.now() of the last pointer activity on the canvas
+  lastActive?: number;
+  color?: string;
   role: string;
 }
 

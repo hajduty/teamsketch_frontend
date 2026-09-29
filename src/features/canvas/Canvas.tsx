@@ -3,13 +3,15 @@ import { Stage, Layer } from "react-konva";
 import useWindowDimensions from "../../hooks/useWindowDimensions";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
+import { Awareness } from "y-protocols/awareness";
 import { PenTool } from "./tools/penTool";
 import { TextTool } from "./tools/textTool";
-import { AwarenessState, CanvasObject, Tool } from "./tools/baseTool";
+import { CanvasObject, Tool } from "./tools/baseTool";
 import { TextRender } from "./components/TextRender";
 import PenRender from "./components/PenRender";
 import { useIsDoubleClick } from "../../hooks/useIsDoubleClick";
-import { CursorsOverlay } from "./components/CursorOverlay";
+import { RemoteCursors } from "./components/RemoteCursors";
+import { colorFor, readPeers } from "./presence";
 import { SelectTool } from "./tools/selectTool";
 import InfiniteGrid from "./components/InfiniteGrid";
 import { Minimap } from "./components/Minimap";
@@ -101,9 +103,14 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   // and each undo manager stays subscribed to the doc
   const [ydoc] = useState(() => new Y.Doc());
   const [yObjects] = useState(() => ydoc.getMap<any>("objects"));
+  // One awareness for the doc's lifetime, shared by every provider. A new one per provider
+  // (e.g. after a hot reload) restarts its clock under the same client id, and everyone
+  // ignores its cursor as outdated until the clock catches up.
+  const [docAwareness] = useState(() => new Awareness(ydoc));
   const providerRef = useRef<WebsocketProvider | null>(null);
   const awarenessRef = useRef<any>(null);
-  const [otherCursors, setOtherCursors] = useState<AwarenessState[]>([]);
+  // Set once connected, for the cursor overlay
+  const [awareness, setAwareness] = useState<any>(null);
 
   const [undoManager] = useState(() => new Y.UndoManager(yObjects, {
     captureTimeout: 200,
@@ -144,20 +151,64 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     useCanvasStore.getState().saveStageState(roomId, { ...position, scale: newScale });
   }, [roomId]);
 
+  // Glide to another user at their zoom: centred on their cursor, or, when their pointer is off
+  // the canvas, on the middle of their screen
+  const jumpToPeer = useCallback((clientId: number) => {
+    const stage = stageRef.current;
+    const state = awarenessRef.current?.getStates().get(clientId);
+    const target = state?.cursorPosition
+      ? { ...state.cursorPosition, scale: state.view?.scale ?? stage?.scaleX() ?? 1 }
+      : state?.view;
+    if (!stage || !target) return;
+    // Their exact zoom: wheel zoom has no limits, so neither does this
+    const scale = Number.isFinite(target.scale) && target.scale > 0 ? target.scale : stage.scaleX();
+    const position = { x: stage.width() / 2 - target.x * scale, y: stage.height() / 2 - target.y * scale };
+    new Konva.Tween({
+      node: stage,
+      duration: 0.35,
+      easing: Konva.Easings.EaseInOut,
+      x: position.x,
+      y: position.y,
+      scaleX: scale,
+      scaleY: scale,
+      onUpdate: () => stage.fire("dragmove"), // keeps the minimap following
+      onFinish: () => {
+        setStageScale(scale);
+        setStagePosition(position);
+        useCanvasStore.getState().saveStageState(roomId, { ...position, scale });
+      },
+    }).play();
+  }, [roomId]);
+
   useEffect(() => {
     useCanvasStore.setState({
       viewControls: {
         zoomIn: () => zoomTo((stageRef.current?.scaleX() ?? 1) * 1.25),
         zoomOut: () => zoomTo((stageRef.current?.scaleX() ?? 1) / 1.25),
         resetZoom: () => zoomTo(1),
+        jumpToPeer,
+        peerLastActive: (clientId: number) => awarenessRef.current?.getStates().get(clientId)?.lastActive ?? null,
       },
     });
     return () => useCanvasStore.setState({ viewControls: null });
-  }, [zoomTo]);
+  }, [zoomTo, jumpToPeer]);
 
   useEffect(() => {
     useCanvasStore.setState({ zoom: stageScale });
   }, [stageScale]);
+
+  // Share what we're looking at, so others can jump to it (with our zoom)
+  const view = width && height
+    ? { x: (width / 2 - stagePosition.x) / stageScale, y: (height / 2 - stagePosition.y) / stageScale, scale: stageScale }
+    : null;
+  // Latest view for the provider effect, which (re)creates our awareness state from scratch
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  useEffect(() => {
+    if (!awareness) return;
+    const timer = setTimeout(() => awareness.setLocalStateField("view", viewRef.current), 150);
+    return () => clearTimeout(timer);
+  }, [awareness, stagePosition, stageScale, width, height]);
 
   const [isConnected, setIsConnected] = useState(false);
 
@@ -248,7 +299,8 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     providerRef.current = new WebsocketProvider(
       `${wsUrl}/${roomName}/${token}`,
       "",
-      ydoc
+      ydoc,
+      { awareness: docAwareness }
     );
 
     awarenessRef.current = providerRef.current.awareness;
@@ -256,14 +308,24 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     awarenessRef.current.setLocalState({
       userId: user?.id,
       username: user?.email,
-      cursorPosition: { x: 0, y: 0 },
+      color: colorFor(user?.id),
+      cursorPosition: null,
+      view: viewRef.current,
+      lastActive: Date.now(),
     });
 
     const awareness = awarenessRef.current;
+    setAwareness(awareness);
+    // Cursor moves also land here, so only publish the peer list when it actually changes
+    let lastPeers = "";
     const handleAwareness = () => {
-      const states = Array.from(awareness.getStates().values()) as AwarenessState[];
-      setOtherCursors(states.filter(s => s.username !== user?.email));
+      const peers = readPeers(awareness.getStates(), awareness.clientID, user?.id);
+      const key = JSON.stringify(peers);
+      if (key === lastPeers) return;
+      lastPeers = key;
+      useCanvasStore.setState({ peers });
     };
+    handleAwareness();
     awareness.on('change', handleAwareness);
 
     // Only re-read the objects the transaction touched (while drawing, just the stroke)
@@ -296,12 +358,15 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
 
     return () => {
       awareness.off('change', handleAwareness);
+      // Tell the others we left (sent before the socket closes), so no cursor is left behind
+      awareness.setLocalState(null);
+      useCanvasStore.setState({ peers: [] });
       yObjects.unobserveDeep(handleObjects);
       providerRef.current?.off('status', handleStatus);
       providerRef.current?.off('sync', handleSync);
       providerRef.current?.disconnect();
     };
-  }, [updateObjectsFromYjs, yObjects]);
+  }, [updateObjectsFromYjs, yObjects, docAwareness]);
 
   // The objects don't depend on the view, so zooming and panning reuse the same elements
   const renderedObjects = useMemo(() => objects.map((obj) => {
@@ -423,9 +488,9 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         <InfiniteGrid stageRef={stageRef} roomId={roomId} />
         <Layer>
           {renderedObjects}
-          <CursorsOverlay cursors={otherCursors} scale={stageScale} />
         </Layer>
       </Stage>
+      <RemoteCursors stageRef={stageRef} awareness={awareness} />
       {quickMenu && <QuickMenu x={quickMenu.x} y={quickMenu.y} onClose={closeQuickMenu} />}
       <Minimap
         stageRef={stageRef}

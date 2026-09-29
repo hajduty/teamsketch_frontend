@@ -3,6 +3,7 @@ import * as Y from 'yjs';
 import { ToolOptions } from './tools/baseTool';
 import { Permissions } from "../../types/permission";
 import { COMPACT_QUERY } from "../../hooks/useIsCompact";
+import { Peer } from "./presence";
 
 interface CanvasState {
   tool: string;
@@ -18,7 +19,9 @@ interface CanvasState {
   optionsPanel: 'tool' | 'canvas';
   // Current zoom, and zoom actions registered by the canvas for the zoom controls
   zoom: number;
-  viewControls: { zoomIn: () => void; zoomOut: () => void; resetZoom: () => void } | null;
+  viewControls: { zoomIn: () => void; zoomOut: () => void; resetZoom: () => void; jumpToPeer: (clientId: number) => void; peerLastActive: (clientId: number) => number | null } | null;
+  // Other people in the room, for the avatars
+  peers: Peer[];
   toolbarOpen: boolean;
   roomListOpen: boolean;
   canDelete: boolean;
@@ -76,6 +79,7 @@ export const useCanvasStore = create<CanvasStore>(
     optionsPanel: 'tool',
     zoom: 1,
     viewControls: null,
+    peers: [],
     toolbarOpen: false,
     canUndo: false,
     canRedo: false,
