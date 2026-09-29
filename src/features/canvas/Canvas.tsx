@@ -10,7 +10,7 @@ import { TextRender } from "./components/TextRender";
 import PenRender from "./components/PenRender";
 import { useIsDoubleClick } from "../../hooks/useIsDoubleClick";
 import { RemoteCursors } from "./components/RemoteCursors";
-import { colorFor } from "./presence";
+import { colorFor, readPeers } from "./presence";
 import { SelectTool } from "./tools/selectTool";
 import InfiniteGrid from "./components/InfiniteGrid";
 import { Minimap } from "./components/Minimap";
@@ -146,16 +146,38 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     useCanvasStore.getState().saveStageState(roomId, { ...position, scale: newScale });
   }, [roomId]);
 
+  // Glide the view so another user's cursor is in the middle of the screen
+  const jumpToPeer = useCallback((clientId: number) => {
+    const stage = stageRef.current;
+    const cursor = awarenessRef.current?.getStates().get(clientId)?.cursorPosition;
+    if (!stage || !cursor) return;
+    const scale = stage.scaleX();
+    const position = { x: stage.width() / 2 - cursor.x * scale, y: stage.height() / 2 - cursor.y * scale };
+    new Konva.Tween({
+      node: stage,
+      duration: 0.35,
+      easing: Konva.Easings.EaseInOut,
+      x: position.x,
+      y: position.y,
+      onUpdate: () => stage.fire("dragmove"), // keeps the minimap following
+      onFinish: () => {
+        setStagePosition(position);
+        useCanvasStore.getState().saveStageState(roomId, position);
+      },
+    }).play();
+  }, [roomId]);
+
   useEffect(() => {
     useCanvasStore.setState({
       viewControls: {
         zoomIn: () => zoomTo((stageRef.current?.scaleX() ?? 1) * 1.25),
         zoomOut: () => zoomTo((stageRef.current?.scaleX() ?? 1) / 1.25),
         resetZoom: () => zoomTo(1),
+        jumpToPeer,
       },
     });
     return () => useCanvasStore.setState({ viewControls: null });
-  }, [zoomTo]);
+  }, [zoomTo, jumpToPeer]);
 
   useEffect(() => {
     useCanvasStore.setState({ zoom: stageScale });
@@ -264,6 +286,17 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
 
     const awareness = awarenessRef.current;
     setAwareness(awareness);
+    // Cursor moves also land here, so only publish the peer list when it actually changes
+    let lastPeers = "";
+    const handleAwareness = () => {
+      const peers = readPeers(awareness.getStates(), awareness.clientID, user?.id);
+      const key = JSON.stringify(peers);
+      if (key === lastPeers) return;
+      lastPeers = key;
+      useCanvasStore.setState({ peers });
+    };
+    handleAwareness();
+    awareness.on('change', handleAwareness);
 
     // Only re-read the objects the transaction touched (while drawing, just the stroke)
     const handleObjects = (events: Y.YEvent<any>[]) => {
@@ -294,6 +327,8 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     }
 
     return () => {
+      awareness.off('change', handleAwareness);
+      useCanvasStore.setState({ peers: [] });
       yObjects.unobserveDeep(handleObjects);
       providerRef.current?.off('status', handleStatus);
       providerRef.current?.off('sync', handleSync);

@@ -8,6 +8,7 @@ import { ShareCanvas } from "../../features/canvas/components/ShareCanvas";
 import { Permissions } from "../../types/permission";
 import { CanvasList } from "../../features/canvas/components/CanvasList";
 import { UserInfo } from "../../features/canvas/components/UserInfo";
+import { Presence } from "../../features/canvas/components/Presence";
 import { useSignalR } from "../../features/auth/ProtectedRoute";
 
 import Joyride, { Step, STATUS, CallBackProps } from "react-joyride";
@@ -223,6 +224,7 @@ function CanvasPage({ roomId }: { roomId: string }) {
         <CanvasBoard roomId={roomId!} role={permission?.role} key={roomId} />
       </div>
       <div className="fixed top-3 right-3 z-30 island flex items-center gap-1 p-1">
+        <Presence />
         <IconButton icon="help" label="Take the tour" tooltip="bottom" onClick={() => setRun(true)} />
         {permission?.role != "viewer" && <>
           <ShareCanvas roomId={roomId!} />
