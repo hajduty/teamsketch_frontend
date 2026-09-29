@@ -32,7 +32,9 @@ export function useCanvasInteractions({
   const debouncedSetCursor = useMemo(() =>
     throttle((x: number, y: number) => {
       if (providerRef.current) {
-        providerRef.current.awareness.setLocalStateField("cursorPosition", { x, y });
+        const awareness = providerRef.current.awareness;
+        const position = { x, y };
+        awareness.setLocalState({ ...awareness.getLocalState(), cursorPosition: position, lastActive: Date.now() });
       }
     }, 8)
     , [providerRef]);

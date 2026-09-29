@@ -19,7 +19,7 @@ interface CanvasState {
   optionsPanel: 'tool' | 'canvas';
   // Current zoom, and zoom actions registered by the canvas for the zoom controls
   zoom: number;
-  viewControls: { zoomIn: () => void; zoomOut: () => void; resetZoom: () => void; jumpToPeer: (clientId: number) => void } | null;
+  viewControls: { zoomIn: () => void; zoomOut: () => void; resetZoom: () => void; jumpToPeer: (clientId: number) => void; peerLastActive: (clientId: number) => number | null } | null;
   // Other people in the room, for the avatars
   peers: Peer[];
   toolbarOpen: boolean;

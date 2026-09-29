@@ -1,38 +1,73 @@
-import { FC } from "react";
+import { FC, useEffect, useState } from "react";
 import { useCanvasStore } from "../canvasStore";
-import { Peer } from "../presence";
+import { Peer, timeAgo } from "../presence";
 
 const MAX_SHOWN = 4;
 
+/** "On the canvas" or "Last active 3 min ago", kept current while the tooltip is showing. */
+const useActivity = (peer: Peer) => {
+  const peerLastActive = useCanvasStore(state => state.viewControls?.peerLastActive);
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const lastActive = peerLastActive?.(peer.clientId);
+      setText(peer.hasCursor ? "On the canvas" : lastActive ? `Last active ${timeAgo(lastActive)}` : "Not on the canvas yet");
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [open, peer.clientId, peer.hasCursor, peerLastActive]);
+
+  return { text, show: () => setOpen(true), hide: () => setOpen(false) };
+};
+
 const Avatar: FC<{ peer: Peer; onJump: (peer: Peer) => void }> = ({ peer, onJump }) => {
-  const label = peer.hasCursor ? `Go to ${peer.name}` : `${peer.name} (not on the canvas)`;
+  const activity = useActivity(peer);
+  const label = peer.hasCursor ? `Go to ${peer.name}` : peer.canJump ? `Go to what ${peer.name} is looking at` : `${peer.name} (not on the canvas yet)`;
   return (
-    <div className="relative group/avatar flex">
+    <div
+      className="relative group/avatar flex"
+      onPointerEnter={activity.show}
+      onPointerLeave={activity.hide}
+      onFocus={activity.show}
+      onBlur={activity.hide}
+    >
       <button
         type="button"
         aria-label={label}
-        disabled={!peer.hasCursor}
+        disabled={!peer.canJump}
         onClick={() => onJump(peer)}
-        className="flex items-center justify-center size-7 rounded-full ring-2 ring-surface text-xs font-semibold text-white uppercase
-          cursor-pointer transition-transform duration-100 hover:-translate-y-0.5 hover:z-10 focus-visible:z-10
-          disabled:cursor-default disabled:opacity-60 disabled:hover:translate-y-0"
+        className={`flex items-center justify-center size-7 rounded-full ring-2 ring-surface text-xs font-semibold text-white uppercase
+          cursor-pointer transition-[transform,opacity] duration-100 hover:-translate-y-0.5 hover:z-10 hover:opacity-100 focus-visible:z-10
+          disabled:cursor-default disabled:hover:translate-y-0 ${peer.hasCursor ? "" : "opacity-55"}`}
         style={{ backgroundColor: peer.color }}
       >
         {peer.name[0] ?? "?"}
       </button>
       <span
         role="tooltip"
-        className="pointer-events-none absolute z-50 top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-md bg-raised border border-line px-2 py-1 text-xs text-ink
+        className="pointer-events-none absolute z-50 top-full right-0 mt-2 w-max rounded-md bg-raised border border-line px-2.5 py-1.5 text-xs text-ink
           opacity-0 transition-opacity duration-100 group-hover/avatar:opacity-100 group-hover/avatar:delay-300 group-has-[:focus-visible]/avatar:opacity-100"
       >
-        {peer.name}
-        <span className="ml-2 text-ink-faint">{peer.hasCursor ? "Click to go to cursor" : "Not on the canvas"}</span>
+        <span className="flex items-center gap-1.5 font-medium">
+          <span className={`size-1.5 rounded-full ${peer.hasCursor ? "bg-[#30a46c]" : "bg-ink-faint"}`} />
+          {peer.name}
+        </span>
+        <span className="block mt-0.5 text-ink-muted">{activity.text}</span>
+        {peer.canJump && (
+          <span className="block mt-0.5 text-ink-faint">
+            {peer.hasCursor ? "Click to go to their cursor" : "Click to see what they're looking at"}
+          </span>
+        )}
       </span>
     </div>
   );
 };
 
-/** Other people in the room; clicking one moves the view to their cursor. */
+/** Other people in the room; clicking one moves the view to their cursor, or where it last was. */
 export const Presence: FC = () => {
   const peers = useCanvasStore(state => state.peers);
   const jumpToPeer = useCanvasStore(state => state.viewControls?.jumpToPeer);

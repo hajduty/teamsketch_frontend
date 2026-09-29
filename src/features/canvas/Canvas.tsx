@@ -151,23 +151,31 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     useCanvasStore.getState().saveStageState(roomId, { ...position, scale: newScale });
   }, [roomId]);
 
-  // Glide the view so another user's cursor is in the middle of the screen
+  // Glide to another user at their zoom: centred on their cursor, or, when their pointer is off
+  // the canvas, on the middle of their screen
   const jumpToPeer = useCallback((clientId: number) => {
     const stage = stageRef.current;
-    const cursor = awarenessRef.current?.getStates().get(clientId)?.cursorPosition;
-    if (!stage || !cursor) return;
-    const scale = stage.scaleX();
-    const position = { x: stage.width() / 2 - cursor.x * scale, y: stage.height() / 2 - cursor.y * scale };
+    const state = awarenessRef.current?.getStates().get(clientId);
+    const target = state?.cursorPosition
+      ? { ...state.cursorPosition, scale: state.view?.scale ?? stage?.scaleX() ?? 1 }
+      : state?.view;
+    if (!stage || !target) return;
+    // Their exact zoom: wheel zoom has no limits, so neither does this
+    const scale = Number.isFinite(target.scale) && target.scale > 0 ? target.scale : stage.scaleX();
+    const position = { x: stage.width() / 2 - target.x * scale, y: stage.height() / 2 - target.y * scale };
     new Konva.Tween({
       node: stage,
       duration: 0.35,
       easing: Konva.Easings.EaseInOut,
       x: position.x,
       y: position.y,
+      scaleX: scale,
+      scaleY: scale,
       onUpdate: () => stage.fire("dragmove"), // keeps the minimap following
       onFinish: () => {
+        setStageScale(scale);
         setStagePosition(position);
-        useCanvasStore.getState().saveStageState(roomId, position);
+        useCanvasStore.getState().saveStageState(roomId, { ...position, scale });
       },
     }).play();
   }, [roomId]);
@@ -179,6 +187,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         zoomOut: () => zoomTo((stageRef.current?.scaleX() ?? 1) / 1.25),
         resetZoom: () => zoomTo(1),
         jumpToPeer,
+        peerLastActive: (clientId: number) => awarenessRef.current?.getStates().get(clientId)?.lastActive ?? null,
       },
     });
     return () => useCanvasStore.setState({ viewControls: null });
@@ -187,6 +196,19 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   useEffect(() => {
     useCanvasStore.setState({ zoom: stageScale });
   }, [stageScale]);
+
+  // Share what we're looking at, so others can jump to it (with our zoom)
+  const view = width && height
+    ? { x: (width / 2 - stagePosition.x) / stageScale, y: (height / 2 - stagePosition.y) / stageScale, scale: stageScale }
+    : null;
+  // Latest view for the provider effect, which (re)creates our awareness state from scratch
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  useEffect(() => {
+    if (!awareness) return;
+    const timer = setTimeout(() => awareness.setLocalStateField("view", viewRef.current), 150);
+    return () => clearTimeout(timer);
+  }, [awareness, stagePosition, stageScale, width, height]);
 
   const [isConnected, setIsConnected] = useState(false);
 
@@ -288,6 +310,8 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
       username: user?.email,
       color: colorFor(user?.id),
       cursorPosition: null,
+      view: viewRef.current,
+      lastActive: Date.now(),
     });
 
     const awareness = awarenessRef.current;

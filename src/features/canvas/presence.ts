@@ -14,13 +14,26 @@ export const colorFor = (id: string | undefined) => {
 /** "jane.doe@mail.com" -> "jane.doe" */
 export const displayName = (username: string | undefined) => (username ?? "Guest").split("@")[0];
 
+/** "just now", "45 s ago", "3 min ago", "2 h ago", "4 d ago" */
+export const timeAgo = (timestamp: number, now = Date.now()) => {
+  const seconds = Math.max(0, Math.floor((now - timestamp) / 1000));
+  if (seconds < 10) return "just now";
+  if (seconds < 60) return `${seconds} s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} h ago`;
+  return `${Math.floor(seconds / 86400)} d ago`;
+};
+
 export interface Peer {
   clientId: number;
   userId: string;
   name: string;
   email: string;
   color: string;
+  // Pointer is on the canvas right now
   hasCursor: boolean;
+  // There is a cursor or a view to jump to
+  canJump: boolean;
 }
 
 /**
@@ -33,8 +46,12 @@ export const readPeers = (states: Map<number, AwarenessState>, selfClientId: num
     if (clientId === selfClientId || !state?.userId) return;
     const hasCursor = !!state.cursorPosition;
     const existing = byUser.get(state.userId);
-    // Prefer a tab that has a cursor on the canvas, so there is somewhere to jump to
-    if (existing && (existing.hasCursor || !hasCursor)) return;
+    // Prefer a tab with the pointer on the canvas, then the most recently used one
+    if (existing) {
+      const other = states.get(existing.clientId);
+      if (existing.hasCursor && !hasCursor) return;
+      if (existing.hasCursor === hasCursor && (other?.lastActive ?? 0) >= (state.lastActive ?? 0)) return;
+    }
     byUser.set(state.userId, {
       clientId,
       userId: state.userId,
@@ -42,6 +59,7 @@ export const readPeers = (states: Map<number, AwarenessState>, selfClientId: num
       email: state.username,
       color: state.color ?? colorFor(state.userId),
       hasCursor,
+      canJump: hasCursor || !!state.view,
     });
   });
   return [...byUser.values()].sort((a, b) => a.name.localeCompare(b.name));
