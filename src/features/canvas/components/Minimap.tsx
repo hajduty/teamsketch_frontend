@@ -1,4 +1,4 @@
-import { FC, useCallback, useEffect, useRef, useState } from "react";
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Konva from "konva";
 import { CanvasObject } from "../tools/baseTool";
 import { useCanvasStore } from "../canvasStore";
@@ -54,6 +54,13 @@ const objectBounds = (obj: CanvasObject): Rect | null => {
   }
   const pad = (obj.strokeWidth || 0) / 2;
   return { x: minX - pad, y: minY - pad, width: maxX - minX + pad * 2, height: maxY - minY + pad * 2 };
+};
+
+// Objects keep their identity until they change, so their bounds can be cached
+const boundsCache = new WeakMap<CanvasObject, Rect | null>();
+const cachedBounds = (obj: CanvasObject) => {
+  if (!boundsCache.has(obj)) boundsCache.set(obj, objectBounds(obj));
+  return boundsCache.get(obj)!;
 };
 
 const objectTransform = (obj: CanvasObject) => {
@@ -120,6 +127,18 @@ export const Minimap: FC<MinimapProps> = ({ stageRef, objects, stageScale, stage
     };
   }, []);
 
+  const contentBounds = useMemo(() => {
+    let bounds: Rect | null = null;
+    for (const obj of objects) {
+      const b = cachedBounds(obj);
+      if (b) bounds = bounds ? union(bounds, b) : b;
+    }
+    return bounds;
+  }, [objects]);
+
+  // The objects drawn at the current mapping; redrawn only when the content or mapping changes
+  const contentLayer = useRef<{ canvas: HTMLCanvasElement; key: unknown[] } | null>(null);
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const stage = stageRef.current;
@@ -137,11 +156,7 @@ export const Minimap: FC<MinimapProps> = ({ stageRef, objects, stageScale, stage
     const viewport: Rect = { x: -stage.x() / s, y: -stage.y() / s, width: stage.width() / s, height: stage.height() / s };
 
     if (!draggingRef.current || !mappingRef.current) {
-      let bounds = viewport;
-      for (const obj of objects) {
-        const b = objectBounds(obj);
-        if (b) bounds = union(bounds, b);
-      }
+      let bounds = contentBounds ? union(viewport, contentBounds) : viewport;
       const pad = Math.max(bounds.width, bounds.height) * PADDING;
       bounds = { x: bounds.x - pad, y: bounds.y - pad, width: bounds.width + pad * 2, height: bounds.height + pad * 2 };
       const scale = Math.min(width / bounds.width, height / bounds.height);
@@ -153,6 +168,33 @@ export const Minimap: FC<MinimapProps> = ({ stageRef, objects, stageScale, stage
       };
     }
     const { bounds, scale, offsetX, offsetY } = mappingRef.current;
+    const key = [objects, bounds.x, bounds.y, scale, width, height, dpr, backgroundColor];
+    const layer = contentLayer.current;
+    if (!layer || layer.key.some((value, i) => value !== key[i])) {
+      const layerCanvas = layer?.canvas ?? document.createElement("canvas");
+      layerCanvas.width = canvas.width;
+      layerCanvas.height = canvas.height;
+      drawContent(layerCanvas, bounds, scale, offsetX, offsetY, dpr);
+      contentLayer.current = { canvas: layerCanvas, key };
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(contentLayer.current!.canvas, 0, 0);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Current view
+    const vx = offsetX + (viewport.x - bounds.x) * scale;
+    const vy = offsetY + (viewport.y - bounds.y) * scale;
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.fillRect(vx, vy, viewport.width * scale, viewport.height * scale);
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(vx, vy, viewport.width * scale, viewport.height * scale);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- drawContent only reads values listed here
+  }, [stageRef, objects, contentBounds, width, height, backgroundColor]);
+
+  const drawContent = (canvas: HTMLCanvasElement, bounds: Rect, scale: number, offsetX: number, offsetY: number, dpr: number) => {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const toMap = new Konva.Transform([scale, 0, 0, scale, offsetX - bounds.x * scale, offsetY - bounds.y * scale]);
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -175,7 +217,7 @@ export const Minimap: FC<MinimapProps> = ({ stageRef, objects, stageScale, stage
           String(obj.text ?? "").split("\n").forEach((line, i) => ctx.fillText(line, origin.x, origin.y + i * fontSize * 1.2));
         } else {
           // Too small to read: show where the text is
-          const b = objectBounds(obj);
+          const b = cachedBounds(obj);
           if (b) {
             ctx.globalAlpha *= 0.5;
             ctx.fillRect(offsetX + (b.x - bounds.x) * scale, offsetY + (b.y - bounds.y) * scale, Math.max(2, b.width * scale), Math.max(1, b.height * scale));
@@ -198,16 +240,7 @@ export const Minimap: FC<MinimapProps> = ({ stageRef, objects, stageScale, stage
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
-
-    // Current view
-    const vx = offsetX + (viewport.x - bounds.x) * scale;
-    const vy = offsetY + (viewport.y - bounds.y) * scale;
-    ctx.fillStyle = "rgba(255,255,255,0.08)";
-    ctx.fillRect(vx, vy, viewport.width * scale, viewport.height * scale);
-    ctx.strokeStyle = "rgba(255,255,255,0.85)";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(vx, vy, viewport.width * scale, viewport.height * scale);
-  }, [stageRef, objects, width, height, backgroundColor]);
+  };
 
   // Redraw while visible whenever the view or the content changes
   useEffect(() => {

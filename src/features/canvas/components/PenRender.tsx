@@ -180,28 +180,8 @@ const PenRender: FC<PenRenderProps> = ({
   );
 };
 
-const areEqual = (prevProps: PenRenderProps, nextProps: PenRenderProps) => {
-  const a = prevProps.obj, b = nextProps.obj;
-  return (
-    a.id === b.id &&
-    a.selected === b.selected &&
-    JSON.stringify(a.points) === JSON.stringify(b.points) &&
-    JSON.stringify(a.pressures) === JSON.stringify(b.pressures) &&
-    a.color === b.color &&
-    a.strokeWidth === b.strokeWidth &&
-    a.opacity === b.opacity &&
-    a.lineStyle === b.lineStyle &&
-    a.taper === b.taper &&
-    a.arrowStart === b.arrowStart &&
-    a.arrowEnd === b.arrowEnd &&
-    a.shape === b.shape &&
-    a.smoothed === b.smoothed &&
-    a.x === b.x &&
-    a.y === b.y &&
-    a.rotation === b.rotation &&
-    a.scaleX === b.scaleX &&
-    a.scaleY === b.scaleY
-  );
-};
+// The canvas keeps an object's identity until it changes in Yjs, so this skips unchanged
+// strokes without comparing their points
+const areEqual = (prevProps: PenRenderProps, nextProps: PenRenderProps) => prevProps.obj === nextProps.obj;
 
 export default React.memo(PenRender, areEqual);

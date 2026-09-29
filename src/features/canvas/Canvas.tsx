@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, FC, useCallback } from "react";
+import { useRef, useState, useEffect, FC, useCallback, useMemo } from "react";
 import { Stage, Layer } from "react-konva";
 import useWindowDimensions from "../../hooks/useWindowDimensions";
 import * as Y from "yjs";
@@ -17,6 +17,7 @@ import { QuickMenu } from "./components/QuickMenu";
 import { toolCursor } from "../../utils/toolCursor";
 import { useAuth } from "../auth/AuthProvider";
 import { useCanvasStore } from "./canvasStore";
+import { useShallow } from "zustand/react/shallow";
 import Konva from "konva";
 import { useCanvasInteractions } from "../../hooks/useCanvasInteractions";
 import { wsUrl } from "../../lib/apiClient";
@@ -48,6 +49,28 @@ const leftButtonOnly = <E extends { evt: MouseEvent }>(handler?: (e: E) => void)
     handler(e);
   });
 
+const toPlainObject = (id: string, value: Y.Map<unknown>): CanvasObject => {
+  const plain: Record<string, unknown> = { id };
+  value.forEach((val, key) => {
+    plain[key] = val instanceof Y.Array ? val.toArray() : val;
+  });
+  return plain as unknown as CanvasObject;
+};
+
+const sameValue = (a: unknown, b: unknown) => {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+};
+
+const sameObject = (a: CanvasObject, b: CanvasObject) => {
+  const x = a as unknown as Record<string, unknown>, y = b as unknown as Record<string, unknown>;
+  const keys = Object.keys(x);
+  if (keys.length !== Object.keys(y).length) return false;
+  return keys.every(key => sameValue(x[key], y[key]));
+};
+
 const TOOLS: Record<string, Tool> = {
   pen: PenTool,
   text: TextTool,
@@ -74,20 +97,32 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const currentState = useRef<any>({});
 
   // Yjs setup
-  const ydoc = useRef(new Y.Doc()).current;
-  const yObjects = useRef(ydoc.getMap<any>("objects")).current;
+  // Lazy initialisers: useRef(new ...) would build a new doc/undo manager on every render,
+  // and each undo manager stays subscribed to the doc
+  const [ydoc] = useState(() => new Y.Doc());
+  const [yObjects] = useState(() => ydoc.getMap<any>("objects"));
   const providerRef = useRef<WebsocketProvider | null>(null);
   const awarenessRef = useRef<any>(null);
   const [otherCursors, setOtherCursors] = useState<AwarenessState[]>([]);
 
-  const undoManager = useRef(new Y.UndoManager(yObjects, {
+  const [undoManager] = useState(() => new Y.UndoManager(yObjects, {
     captureTimeout: 200,
-  })).current;
+  }));
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const isToolsDisabled = role === "none" || role === "viewer" || role === "";
 
-  const { tool: activeTool, options: toolOptions, init: initCanvasStore, editingId: editingId, addGuestRoom } = useCanvasStore();
+  // Pick only what the board uses: subscribing to the whole store re-rendered every object
+  // on unrelated updates, e.g. the zoom level and saved view written on each wheel tick
+  const { tool: activeTool, options: toolOptions, init: initCanvasStore, editingId, addGuestRoom } = useCanvasStore(
+    useShallow(state => ({
+      tool: state.tool,
+      options: state.options,
+      init: state.init,
+      editingId: state.editingId,
+      addGuestRoom: state.addGuestRoom,
+    }))
+  );
 
   const setCanDelete = useCanvasStore(state => state.setCanDelete);
 
@@ -175,25 +210,35 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     };
   }, [undoManager]);
 
-  const updateObjectsFromYjs = useCallback(() => {
-    const allObjects: CanvasObject[] = [];
-    yObjects.forEach((value, key) => {
-      if (value instanceof Y.Map) {
-        const plain: any = { id: key };
-        value.forEach((val, subKey) => {
-          plain[subKey] = val instanceof Y.Array ? [...val.toArray()] : val;
-        });
-        allObjects.push(plain);
-      }
-    });
+  // Plain copy of each Y.Map, reused while it's unchanged so renderers can skip it by identity
+  const plainCache = useRef(new Map<string, CanvasObject>());
 
-    // Only update if objects actually changed
-    setObjects(prev => {
-      if (JSON.stringify(prev) !== JSON.stringify(allObjects)) {
-        return allObjects;
+  /**
+   * Sync `objects` with Yjs. `changed` lists the objects known to have changed (from the
+   * observer); without it every object is re-read and compared, keeping unchanged ones.
+   */
+  const updateObjectsFromYjs = useCallback((changed?: Set<string>) => {
+    const cache = plainCache.current;
+    const next = new Map<string, CanvasObject>();
+    let dirty = false;
+    yObjects.forEach((value, key) => {
+      if (!(value instanceof Y.Map)) return;
+      const cached = cache.get(key);
+      if (cached && changed && !changed.has(key)) {
+        next.set(key, cached);
+        return;
       }
-      return prev;
+      const plain = toPlainObject(key, value);
+      if (cached && !changed && sameObject(cached, plain)) {
+        next.set(key, cached);
+      } else {
+        next.set(key, plain);
+        dirty = true;
+      }
     });
+    if (next.size !== cache.size) dirty = true;
+    plainCache.current = next;
+    if (dirty) setObjects([...next.values()]);
   }, [yObjects]);
 
   useEffect(() => {
@@ -214,14 +259,23 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
       cursorPosition: { x: 0, y: 0 },
     });
 
-    awarenessRef.current.on('change', (_changes: any) => {
-      const states = Array.from(awarenessRef.current.getStates().values()) as AwarenessState[];
+    const awareness = awarenessRef.current;
+    const handleAwareness = () => {
+      const states = Array.from(awareness.getStates().values()) as AwarenessState[];
       setOtherCursors(states.filter(s => s.username !== user?.email));
-    });
+    };
+    awareness.on('change', handleAwareness);
 
-    yObjects.observeDeep(() => {
-      updateObjectsFromYjs();
-    });
+    // Only re-read the objects the transaction touched (while drawing, just the stroke)
+    const handleObjects = (events: Y.YEvent<any>[]) => {
+      const changed = new Set<string>();
+      for (const event of events) {
+        if (event.target === yObjects) event.changes.keys.forEach((_, key) => changed.add(key));
+        else if (typeof event.path[0] === "string") changed.add(event.path[0]);
+      }
+      updateObjectsFromYjs(changed);
+    };
+    yObjects.observeDeep(handleObjects);
 
     const handleStatus = ({ status }: { status: string }) => {
       setIsConnected(status === 'connected');
@@ -241,11 +295,33 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     }
 
     return () => {
+      awareness.off('change', handleAwareness);
+      yObjects.unobserveDeep(handleObjects);
       providerRef.current?.off('status', handleStatus);
       providerRef.current?.off('sync', handleSync);
       providerRef.current?.disconnect();
     };
   }, [updateObjectsFromYjs, yObjects]);
+
+  // The objects don't depend on the view, so zooming and panning reuse the same elements
+  const renderedObjects = useMemo(() => objects.map((obj) => {
+    const ToolComponent = TOOLS_COMPONENTS[obj.type];
+    return ToolComponent ? (
+      <ToolComponent
+        key={obj.id}
+        obj={obj}
+        yObjects={yObjects}
+        toolOptions={toolOptions}
+        activeTool={activeTool}
+        updateObjectsFromYjs={updateObjectsFromYjs}
+        isSpacePressed={isSpacePressed}
+        isSelected={selectedId === obj.id}
+        stageRef={stageRef}
+        userId={user?.id}
+        editing={editingId === obj.id}
+      />
+    ) : null;
+  }), [objects, yObjects, toolOptions, activeTool, updateObjectsFromYjs, isSpacePressed, selectedId, user?.id, editingId]);
 
   const tool = TOOLS[activeTool] || PenTool;
   const {
@@ -346,24 +422,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
       >
         <InfiniteGrid stageRef={stageRef} roomId={roomId} />
         <Layer>
-          {objects.map((obj) => {
-            const ToolComponent = TOOLS_COMPONENTS[obj.type];
-            return ToolComponent ? (
-              <ToolComponent
-                key={obj.id}
-                obj={obj}
-                yObjects={yObjects}
-                toolOptions={toolOptions}
-                activeTool={activeTool}
-                updateObjectsFromYjs={updateObjectsFromYjs}
-                isSpacePressed={isSpacePressed}
-                isSelected={selectedId === obj.id}
-                stageRef={stageRef}
-                userId={user?.id}
-                editing={editingId === obj.id}
-              />
-            ) : null;
-          })}
+          {renderedObjects}
           <CursorsOverlay cursors={otherCursors} scale={stageScale} />
         </Layer>
       </Stage>
