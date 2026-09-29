@@ -2,6 +2,7 @@ import { create, StateCreator } from 'zustand';
 import * as Y from 'yjs';
 import { ToolOptions } from './tools/baseTool';
 import { Permissions } from "../../types/permission";
+import { COMPACT_QUERY } from "../../hooks/useIsCompact";
 
 interface CanvasState {
   tool: string;
@@ -13,6 +14,11 @@ interface CanvasState {
   guestRooms: Permissions[];
   stageStates: Record<string, { x: number; y: number; scale: number, backgroundColor: string, borderColor: string }>;
   toolOptionsOpen: boolean;
+  // Which card the options panel shows: the active tool's options or canvas settings
+  optionsPanel: 'tool' | 'canvas';
+  // Current zoom, and zoom actions registered by the canvas for the zoom controls
+  zoom: number;
+  viewControls: { zoomIn: () => void; zoomOut: () => void; resetZoom: () => void } | null;
   toolbarOpen: boolean;
   roomListOpen: boolean;
   canDelete: boolean;
@@ -33,6 +39,9 @@ interface CanvasActions {
   saveStageState: (roomId: string, updates: Partial<{ x: number; y: number; scale: number; backgroundColor: string, borderColor: string }>) => void;
   loadStageState: (roomId: string) => { x: number; y: number; scale: number; backgroundColor: string, borderColor: string } | null;
   setToolOptionsOpen: (state: boolean) => void;
+  /** Select a tool; selecting the active tool again toggles its options */
+  selectTool: (tool: string) => void;
+  toggleCanvasSettings: () => void;
   setToolbarOpen: (state: boolean) => void;
   setRoomListOpen: (state: boolean) => void;
   setCanDelete: (state: boolean) => void;
@@ -49,7 +58,7 @@ export const useCanvasStore = create<CanvasStore>(
     // --- STATE ---
     tool: 'pen',
     options: {
-      color: 'white',
+      color: '#ececef',
       size: 5,
       opacity: 1,
       lineStyle: 'solid',
@@ -62,7 +71,11 @@ export const useCanvasStore = create<CanvasStore>(
       fontFamily: 'Arial',
     },
     roomListOpen: false,
-    toolOptionsOpen: false,
+    // Open by default, except on phones where it would cover half the canvas
+    toolOptionsOpen: typeof window === 'undefined' || !window.matchMedia(COMPACT_QUERY).matches,
+    optionsPanel: 'tool',
+    zoom: 1,
+    viewControls: null,
     toolbarOpen: false,
     canUndo: false,
     canRedo: false,
@@ -166,9 +179,27 @@ export const useCanvasStore = create<CanvasStore>(
     setToolbarOpen: (toolbarOpen) => set({ toolbarOpen }),
     setToolOptionsOpen: (toolOptionsOpen) => set({ toolOptionsOpen }),
 
+    selectTool: (tool) => {
+      const { tool: current, toolOptionsOpen, optionsPanel } = get();
+      if (tool === current && optionsPanel === 'tool') {
+        set({ toolOptionsOpen: !toolOptionsOpen });
+      } else {
+        set({ tool, optionsPanel: 'tool', toolOptionsOpen: true });
+      }
+    },
+
+    toggleCanvasSettings: () => {
+      const { toolOptionsOpen, optionsPanel } = get();
+      if (optionsPanel === 'canvas' && toolOptionsOpen) {
+        set({ toolOptionsOpen: false, optionsPanel: 'tool' });
+      } else {
+        set({ toolOptionsOpen: true, optionsPanel: 'canvas' });
+      }
+    },
+
     saveStageState: (roomId: string, updates: Partial<{ x: number; y: number; scale: number; backgroundColor: string, borderColor: string }>) => {
       set(state => {
-        const prevRoomState = state.stageStates[roomId] ?? { scale: 1, backgroundColor: "#111111", borderColor: "#333333" };
+        const prevRoomState = state.stageStates[roomId] ?? { scale: 1, backgroundColor: "#18191c", borderColor: "#2a2c31" };
 
         const updated = {
           ...state.stageStates,

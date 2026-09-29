@@ -104,6 +104,63 @@ export function useCanvasInteractions({
     if (e.target === stageRef.current) setCursor("grabbing");
   }, [stageRef, setCursor]);
 
+  // Pan by holding the middle mouse button (scroll-wheel click), same as Space + drag
+  useEffect(() => {
+    let pan: { pointerId: number; startX: number; startY: number; stageX: number; stageY: number } | null = null;
+
+    const onCanvas = (e: Event) => {
+      const container = stageRef.current?.container();
+      return !!container && container.contains(e.target as Node);
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 1 || !onCanvas(e)) return;
+      const stage = stageRef.current;
+      if (!stage) return;
+      e.preventDefault();
+      pan = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, stageX: stage.x(), stageY: stage.y() };
+      stage.container().setPointerCapture?.(e.pointerId);
+      setCursor("grabbing");
+    };
+
+    // Stop the browser's middle-click auto-scroll on the canvas
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button === 1 && onCanvas(e)) e.preventDefault();
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      const stage = stageRef.current;
+      if (!pan || e.pointerId !== pan.pointerId || !stage) return;
+      stage.position({ x: pan.stageX + e.clientX - pan.startX, y: pan.stageY + e.clientY - pan.startY });
+      stage.fire("dragmove"); // keeps the minimap following, as with Space-drag
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      const stage = stageRef.current;
+      if (!pan || e.pointerId !== pan.pointerId) return;
+      pan = null;
+      stage?.container().releasePointerCapture?.(e.pointerId);
+      setCursor(spaceHeldRef.current ? "grab" : "");
+      if (!stage) return;
+      const position = { x: stage.x(), y: stage.y() };
+      setStagePosition(position);
+      useCanvasStore.getState().saveStageState(roomId, position);
+    };
+
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("mousedown", onMouseDown, true);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("mousedown", onMouseDown, true);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+  }, [stageRef, setCursor, setStagePosition, roomId]);
+
   // Wheel zoom handler
   const handleWheelZoom = useCallback((e: any) => {
     e.evt.preventDefault();

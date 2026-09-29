@@ -1,75 +1,63 @@
-import { Button } from "../../../components/Button";
-import Icon from "../../../components/Icon";
-import { useIsMobile } from "../../../hooks/useIsMobile";
+import { IconButton } from "../../../components/IconButton";
+import { useIsCompact } from "../../../hooks/useIsCompact";
 import { useCanvasStore } from "../canvasStore";
-import { PinComponent } from "../../../components/Pin";
+
+const TOOLS = [
+  { name: "select", icon: "arrow_selector_tool", label: "Select" },
+  { name: "pen", icon: "edit", label: "Pen" },
+  { name: "text", icon: "text_fields", label: "Text" },
+];
 
 export const Toolbar = () => {
-  const tools = [
-    { name: "select", icon: "arrow_selector_tool" },
-    { name: "pen", icon: "edit" },
-    { name: "text", icon: "text_fields" },
-    { name: "settings", icon: "settings" }
-  ];
-
+  const compact = useIsCompact();
   const tool = useCanvasStore(state => state.tool);
-  const setTool = useCanvasStore(state => state.setTool);
+  const selectTool = useCanvasStore(state => state.selectTool);
+  const toggleCanvasSettings = useCanvasStore(state => state.toggleCanvasSettings);
+  const canvasSettingsOpen = useCanvasStore(state => state.toolOptionsOpen && state.optionsPanel === "canvas");
+  const undo = useCanvasStore(state => state.undo);
+  const redo = useCanvasStore(state => state.redo);
+  const canUndo = useCanvasStore(state => state.canUndo);
+  const canRedo = useCanvasStore(state => state.canRedo);
 
-  const isMobile = useIsMobile();
-
-  const isTappedOpen = useCanvasStore(state => state.toolbarOpen);
-  const setIsTappedOpen = useCanvasStore(state => state.setToolbarOpen);
-
-  if (isMobile) {
-    return (
-      <div className="fixed flex justify-center bottom-0 w-2/3 left-1/2 -translate-x-1/2 h-16 bg-neutral-950 rounded-t-2xl toolbar
-      items-center border-t border-r border-l border-t-zinc-800 border-zinc-900 border-1 shadow-2xl shadow-black">
-        <div
-          className={`flex flex-row justify-center gap-4 group-hover:opacity-100 transition-opacity duration-200`}
-        >
-          {tools.map(({ name, icon }) => (
-            <Button
-              key={name}
-              onClick={() => {
-                setTool(name);
-              }}
-              className={`${name}-tool rounded-xl`}
-              highlighted={tool === name}
-            >
-              <Icon iconName={icon} fontSize="18px" color="white" />
-            </Button>
-          ))}
-        </div>
-      </div>
-    )
-  }
+  const tooltip = compact ? "top" : "right";
+  const divider = <div className={compact ? "w-px my-1 mx-0.5 bg-line" : "h-px my-1 bg-line"} />;
 
   return (
-    <div
-      className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-2/3 sm:w-1/3 rounded-t-2xl bg-neutral-950 z-10 
-        border-t border-r border-l border-t-zinc-700 border-zinc-800 group
-        shadow-2xl shadow-black
-        ${isMobile ? "h-6" : "h-8 hover:h-20"}
-        ${isTappedOpen ? "h-20" : "h-4"}
-        flex justify-center items-center transition-all duration-150 toolbar`}
+    <nav
+      aria-label="Tools"
+      className={`toolbar island fixed z-20 flex gap-1 p-1.5
+        ${compact
+          ? "bottom-3 left-1/2 -translate-x-1/2 flex-row"
+          : "left-3 top-1/2 -translate-y-1/2 flex-col"}`}
     >
-      <PinComponent isPinned={isTappedOpen} onClick={() => setIsTappedOpen(!isTappedOpen)} className={`duration-200 transition-opacity group-hover:opacity-100 ${isTappedOpen ? "opacity-100" : "opacity-0"}`} />
-      <div
-        className={`flex flex-row justify-center gap-4 group-hover:opacity-100 transition-opacity duration-200 ${isTappedOpen ? "opacity-100" : "opacity-0"}`}
-      >
-        {tools.map(({ name, icon }) => (
-          <Button
-            key={name}
-            onClick={() => {
-              setTool(name);
-            }}
-            className={`${name}-tool rounded-xl`}
-            highlighted={tool === name}
-          >
-            <Icon iconName={icon} fontSize="22px" color="white" />
-          </Button>
-        ))}
-      </div>
-    </div>
+      {TOOLS.map(({ name, icon, label }) => (
+        <IconButton
+          key={name}
+          icon={icon}
+          label={label}
+          active={tool === name}
+          onClick={() => selectTool(name)}
+          tooltip={tooltip}
+          className={`${name}-tool`}
+        />
+      ))}
+      {divider}
+      <IconButton
+        icon="tune"
+        label="Canvas settings"
+        active={canvasSettingsOpen}
+        onClick={toggleCanvasSettings}
+        tooltip={tooltip}
+        className="settings-tool"
+      />
+      {/* On phones undo/redo live here; on larger screens they're in the bottom-left bar */}
+      {compact && (
+        <>
+          {divider}
+          <IconButton icon="undo" label="Undo" onClick={undo} disabled={!canUndo} tooltip={tooltip} className="history-buttons" />
+          <IconButton icon="redo" label="Redo" onClick={redo} disabled={!canRedo} tooltip={tooltip} />
+        </>
+      )}
+    </nav>
   );
 };

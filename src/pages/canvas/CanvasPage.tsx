@@ -12,8 +12,8 @@ import { useSignalR } from "../../features/auth/ProtectedRoute";
 
 import Joyride, { Step, STATUS, CallBackProps } from "react-joyride";
 import { useCanvasStore } from "../../features/canvas/canvasStore";
-import { Button } from "../../components/Button";
-import Icon from "../../components/Icon";
+import { IconButton } from "../../components/IconButton";
+import { SelectionBar } from "../../features/canvas/components/SelectionBar";
 import apiClient from "../../lib/apiClient";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { apiRoutes } from "../../lib/apiRoutes";
@@ -86,35 +86,35 @@ function CanvasPage({ roomId }: { roomId: string }) {
   const [steps] = useState<Step[]>([
     {
       target: ".toolbar",
-      content: "This is your toolbar, hover over it to access it, or pin it.",
-      placement: "top",
+      content: "These are your tools. Click the active tool again to show or hide its options.",
+      placement: "right",
       disableBeacon: true
     },
     {
       target: ".pen-tool",
-      content: "This is your main tool for drawing on the screen.",
+      content: "The pen is your main tool for drawing.",
       disableBeacon: true
     },
     {
       target: ".pen-options",
-      content: "Here you can change the settings of your selected tool",
+      content: "Change the settings of the selected tool here.",
       placement: "right",
       disableBeacon: true
     },
     {
       target: ".history-buttons",
-      content: "These are your history controls",
+      content: "Undo, redo and zoom. Ctrl+Z and Ctrl+Y work too.",
       placement: "top",
       disableBeacon: true
     },
     {
       target: ".canvas-list",
-      content: "These are the rooms you have access to.",
-      placement: "right",
+      content: "Switch between your rooms or create a new one.",
+      placement: "bottom",
     },
     {
       target: ".share-canvas",
-      content: "You can share your canvas with other users.",
+      content: "Invite others to draw with you.",
       placement: "bottom",
     }
   ]);
@@ -128,23 +128,14 @@ function CanvasPage({ roomId }: { roomId: string }) {
 
     if (action === "next" || action === "start") {
       switch (index) {
-        case 0:
-          useCanvasStore.getState().setToolbarOpen(true);
-          break;
         case 1:
-          break;
-        case 2:
-          useCanvasStore.getState().setToolOptionsOpen(true);
-          useCanvasStore.getState().setToolbarOpen(false);
+          useCanvasStore.setState({ tool: "pen", optionsPanel: "tool", toolOptionsOpen: true });
           break;
         case 3:
-          useCanvasStore.getState().setToolOptionsOpen(false);
-          useCanvasStore.getState().setRoomListOpen(false);
+          useCanvasStore.getState().setRoomListOpen(true);
           break;
         case 4:
-          break;
-        case 5:
-          useCanvasStore.getState().setRoomListOpen(true);
+          useCanvasStore.getState().setRoomListOpen(false);
           break;
       }
     }
@@ -190,7 +181,7 @@ function CanvasPage({ roomId }: { roomId: string }) {
 
     if (loading) {
     return (
-      <div className="h-screen w-screen flex justify-center items-center bg-neutral-950">
+      <div className="h-screen w-screen flex justify-center items-center bg-canvas">
         <svg
           className="h-4 w-4 text-white animate-spin"
           xmlns="http://www.w3.org/2000/svg"
@@ -219,25 +210,30 @@ function CanvasPage({ roomId }: { roomId: string }) {
     return (
       <>
         <RoomNotFound />
-        <UserInfo />
+        <div className="fixed top-3 right-3 z-30 island p-1">
+          <UserInfo />
+        </div>
       </>
     )
   }
 
   return (
     <>
-      <div className="flex flex-row h-screen justify-center items-center bg-neutral-950 relative touch-none">
+      <div className="flex flex-row h-screen justify-center items-center bg-canvas relative touch-none">
         <CanvasBoard roomId={roomId!} role={permission?.role} key={roomId} />
       </div>
-      <div className="fixed bottom-0 left-0 group hover:z-3 m-2">
-        <Button className="rounded-lg " onClick={() => setRun(true)}><Icon iconName="question_mark" fontSize="18px" color="white" /></Button>
+      <div className="fixed top-3 right-3 z-30 island flex items-center gap-1 p-1">
+        <IconButton icon="help" label="Take the tour" tooltip="bottom" onClick={() => setRun(true)} />
+        {permission?.role != "viewer" && <>
+          <ShareCanvas roomId={roomId!} />
+          <UserInfo />
+        </>}
       </div>
       {permission?.role != "viewer" && <>
         <HistoryButtons/>
         <Toolbar />
         <ToolOptions roomId={roomId!} />
-        <ShareCanvas roomId={roomId!} />
-        <UserInfo />
+        <SelectionBar />
       </>
       }
       <CanvasList roomId={roomId!} />

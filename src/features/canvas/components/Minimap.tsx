@@ -2,7 +2,7 @@ import { FC, useCallback, useEffect, useRef, useState } from "react";
 import Konva from "konva";
 import { CanvasObject } from "../tools/baseTool";
 import { useCanvasStore } from "../canvasStore";
-import { useIsMobile } from "../../../hooks/useIsMobile";
+import { useIsCompact } from "../../../hooks/useIsCompact";
 
 interface MinimapProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -65,12 +65,12 @@ const objectTransform = (obj: CanvasObject) => {
 };
 
 export const Minimap: FC<MinimapProps> = ({ stageRef, objects, stageScale, stagePosition, setStagePosition, roomId }) => {
-  const isMobile = useIsMobile();
-  const width = isMobile ? MOBILE_WIDTH : WIDTH;
-  const height = isMobile ? MOBILE_HEIGHT : HEIGHT;
+  const compact = useIsCompact();
+  const width = compact ? MOBILE_WIDTH : WIDTH;
+  const height = compact ? MOBILE_HEIGHT : HEIGHT;
 
-  const backgroundColor = useCanvasStore(state => state.stageStates[roomId]?.backgroundColor) ?? "#111111";
-  const borderColor = useCanvasStore(state => state.stageStates[roomId]?.borderColor) ?? "#333333";
+  const backgroundColor = useCanvasStore(state => state.stageStates[roomId]?.backgroundColor) ?? "#18191c";
+  const borderColor = useCanvasStore(state => state.stageStates[roomId]?.borderColor) ?? "#2a2c31";
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -241,8 +241,8 @@ export const Minimap: FC<MinimapProps> = ({ stageRef, objects, stageScale, stage
   return (
     <div
       ref={containerRef}
-      className={`fixed right-2 z-3 rounded-md overflow-hidden border border-t-zinc-700 shadow-2xl shadow-black transition-opacity duration-300
-        ${isMobile ? "bottom-40" : "bottom-14"}
+      className={`fixed right-3 z-20 rounded-xl overflow-hidden border shadow-2xl shadow-black/60 transition-opacity duration-300
+        ${compact ? "bottom-[72px]" : "bottom-3"}
         ${visible ? "opacity-100" : "opacity-0"} ${!visible || passThrough ? "pointer-events-none" : ""}`}
       style={{ width, height, borderColor }}
       onPointerEnter={() => { hoveredRef.current = true; clearTimeout(hideTimer.current); }}

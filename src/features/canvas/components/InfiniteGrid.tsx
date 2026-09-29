@@ -13,8 +13,8 @@ const BASE_HEIGHT = 200;
 const CELL_LIMIT = 500;
 
 const InfiniteGrid: FC<GridProps> = ({ stageRef, roomId }) => {
-  const backgroundColor = useCanvasStore(state => state.stageStates[roomId]?.backgroundColor) ?? "#111111";
-  const borderColor = useCanvasStore(state => state.stageStates[roomId]?.borderColor) ?? "#333333";
+  const backgroundColor = useCanvasStore(state => state.stageStates[roomId]?.backgroundColor) ?? "#18191c";
+  const borderColor = useCanvasStore(state => state.stageStates[roomId]?.borderColor) ?? "#2a2c31";
 
   const grid = [[backgroundColor, backgroundColor], [backgroundColor, backgroundColor]];
   const [gridCells, setGridCells] = useState<JSX.Element[]>([]);

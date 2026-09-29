@@ -13,6 +13,8 @@ import { CursorsOverlay } from "./components/CursorOverlay";
 import { SelectTool } from "./tools/selectTool";
 import InfiniteGrid from "./components/InfiniteGrid";
 import { Minimap } from "./components/Minimap";
+import { QuickMenu } from "./components/QuickMenu";
+import { toolCursor } from "../../utils/toolCursor";
 import { useAuth } from "../auth/AuthProvider";
 import { useCanvasStore } from "./canvasStore";
 import Konva from "konva";
@@ -38,6 +40,13 @@ export interface History {
   deleted?: boolean;      // Whether this history entry has been undone
   operation?: string;     // Type of change
 }
+
+/** Tools act on the primary (left) mouse button only; right-click opens the quick menu. */
+const leftButtonOnly = <E extends { evt: MouseEvent }>(handler?: (e: E) => void) =>
+  handler && ((e: E) => {
+    if (e.evt.button !== 0) return;
+    handler(e);
+  });
 
 const TOOLS: Record<string, Tool> = {
   pen: PenTool,
@@ -81,6 +90,39 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const { tool: activeTool, options: toolOptions, init: initCanvasStore, editingId: editingId, addGuestRoom } = useCanvasStore();
 
   const setCanDelete = useCanvasStore(state => state.setCanDelete);
+
+  // Right-click quick settings menu
+  const [quickMenu, setQuickMenu] = useState<{ x: number; y: number } | null>(null);
+  const closeQuickMenu = useCallback(() => setQuickMenu(null), []);
+
+  // Zoom around the centre of the screen, for the zoom buttons
+  const zoomTo = useCallback((targetScale: number) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const oldScale = stage.scaleX();
+    const newScale = Math.min(20, Math.max(0.05, targetScale));
+    const center = { x: stage.width() / 2, y: stage.height() / 2 };
+    const worldCenter = { x: (center.x - stage.x()) / oldScale, y: (center.y - stage.y()) / oldScale };
+    const position = { x: center.x - worldCenter.x * newScale, y: center.y - worldCenter.y * newScale };
+    setStageScale(newScale);
+    setStagePosition(position);
+    useCanvasStore.getState().saveStageState(roomId, { ...position, scale: newScale });
+  }, [roomId]);
+
+  useEffect(() => {
+    useCanvasStore.setState({
+      viewControls: {
+        zoomIn: () => zoomTo((stageRef.current?.scaleX() ?? 1) * 1.25),
+        zoomOut: () => zoomTo((stageRef.current?.scaleX() ?? 1) / 1.25),
+        resetZoom: () => zoomTo(1),
+      },
+    });
+    return () => useCanvasStore.setState({ viewControls: null });
+  }, [zoomTo]);
+
+  useEffect(() => {
+    useCanvasStore.setState({ zoom: stageScale });
+  }, [stageScale]);
 
   const [isConnected, setIsConnected] = useState(false);
 
@@ -272,6 +314,9 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   return (
     <>
       <Stage className="m-0 p-0 canvas-stage"
+        // Tool cursor lives in a CSS variable so pan/resize cursors (set inline by the pan
+        // code and Konva's transformer) can override it and fall back to it when cleared
+        style={{ "--tool-cursor": toolCursor(activeTool, toolOptions, isToolsDisabled) } as React.CSSProperties}
         ref={stageRef}
         width={width!}
         height={height!}
@@ -284,10 +329,15 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         onTouchStart={!isSpacePressed && !isToolsDisabled ? handleMouseDown : undefined}
         onTouchMove={!isSpacePressed ? wrappedHandleMouseMove : undefined}
         onTouchEnd={!isSpacePressed && !isToolsDisabled ? handleMouseUp : undefined}
-        onMouseDown={!isSpacePressed && !isToolsDisabled ? handleMouseDown : undefined}
+        onMouseDown={!isSpacePressed && !isToolsDisabled ? leftButtonOnly(handleMouseDown) : undefined}
         onMouseMove={!isSpacePressed ? wrappedHandleMouseMove : undefined}
-        onMouseUp={!isSpacePressed && !isToolsDisabled ? handleMouseUp : undefined}
-        onClick={!isSpacePressed && !isToolsDisabled ? handleClick : undefined}
+        onMouseUp={!isSpacePressed && !isToolsDisabled ? leftButtonOnly(handleMouseUp) : undefined}
+        onClick={!isSpacePressed && !isToolsDisabled ? leftButtonOnly(handleClick) : undefined}
+        onContextMenu={(e) => {
+          e.evt.preventDefault();
+          if (isToolsDisabled || isSpacePressed) return;
+          setQuickMenu({ x: e.evt.clientX, y: e.evt.clientY });
+        }}
         onDblClick={(e) => {
           if (!isSpacePressed && !isToolsDisabled && (isDoubleClick() && handleClick)) {
             handleDblClick?.(e);
@@ -317,6 +367,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
           <CursorsOverlay cursors={otherCursors} scale={stageScale} />
         </Layer>
       </Stage>
+      {quickMenu && <QuickMenu x={quickMenu.x} y={quickMenu.y} onClose={closeQuickMenu} />}
       <Minimap
         stageRef={stageRef}
         objects={objects}

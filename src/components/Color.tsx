@@ -7,6 +7,11 @@ export const Color = ({ className, onChange, value }: { className?: string, onCh
   const inputRef = useRef<HTMLInputElement>(null);
   const [color, setColor] = useState(value);
 
+  // Follow changes made elsewhere (e.g. the quick swatches)
+  useEffect(() => {
+    setColor(value);
+  }, [value]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -42,21 +47,19 @@ export const Color = ({ className, onChange, value }: { className?: string, onCh
   return (
     <>
       <div className={`relative w-full ${className}`} ref={dropdownRef}>
-        <div className="flex flex-row items-center justify-between w-full text-white text-xs bg-zinc-950 border border-zinc-600 focus-within:ring-1 focus-within:ring-gray-700">
-          <input type="text" className="bg-transparent text-white border-none outline-none px-2 py-1 text-xs w-full" ref={inputRef}
+        <div className="flex flex-row items-center w-full h-8 text-ink text-xs bg-canvas border border-line-strong rounded-md focus-within:border-accent">
+          <input type="text" aria-label="Color value" className="bg-transparent text-ink border-none outline-none px-2 text-xs w-full min-w-0 tabular" ref={inputRef}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onClick={() => setIsOpen(true)}
             value={color}
           />
-          <div className="p-1 border-l border-zinc-600 cursor-pointer flex-shrink-0">
-            <span className={`transition-transform flex items-center`} onClick={toggleDropdown}>
-              <span className="w-3 h-3 bg-" style={{ backgroundColor: color }} />
-            </span>
-          </div>
+          <button type="button" aria-label="Pick a color" className="flex items-center pr-2 pl-1 h-full cursor-pointer flex-shrink-0" onClick={toggleDropdown}>
+            <span className="size-4 rounded-sm border border-white/15" style={{ backgroundColor: color }} />
+          </button>
         </div>
         {isOpen && (
-          <div className="absolute left-0 mt-1 w-fit text-xs shadow-lg max-h-60 overflow-hidden z-10">
+          <div className="absolute left-0 mt-2 w-fit text-xs shadow-2xl shadow-black/50 rounded-lg overflow-hidden z-30">
             <HexColorPicker color={color} onChange={changeColor} />
           </div>
         )}

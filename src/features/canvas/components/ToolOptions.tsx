@@ -1,26 +1,36 @@
-import { FC } from "react";
+import { FC, ReactNode } from "react";
 import EditableDropdown from "../../../components/EditableDropdown";
 import { Color } from "../../../components/Color";
 import { useCanvasStore } from "../canvasStore";
-import { useIsMobile } from "../../../hooks/useIsMobile";
-import { PinComponent } from "../../../components/Pin";
+import { useIsCompact } from "../../../hooks/useIsCompact";
 import Icon from "../../../components/Icon";
+import { IconButton } from "../../../components/IconButton";
+
+const SWATCHES = ["#ececef", "#9a9ca5", "#f0525a", "#f59e0b", "#facc15", "#22c55e", "#3b82f6", "#a855f7"];
 
 type SegmentOption<T> = { value: T; label: string };
 
-const Segmented = <T extends string>({ value, options, onChange, disabled }: {
+const Segmented = <T extends string>({ value, options, onChange, disabled, label }: {
   value: T;
   options: SegmentOption<T>[];
   onChange: (value: T) => void;
   disabled?: boolean;
+  label: string;
 }) => (
-  <div className={`flex w-full text-xs border border-zinc-600 ${disabled ? "opacity-40 pointer-events-none" : ""}`}>
+  <div
+    role="radiogroup"
+    aria-label={label}
+    className={`flex w-full p-0.5 gap-0.5 rounded-md bg-canvas border border-line text-xs ${disabled ? "opacity-40 pointer-events-none" : ""}`}
+  >
     {options.map(option => (
       <button
         key={option.value}
         type="button"
+        role="radio"
+        aria-checked={value === option.value}
         onClick={() => onChange(option.value)}
-        className={`flex-1 px-1 py-1 cursor-pointer duration-100 ${value === option.value ? "bg-blue-500" : "hover:bg-zinc-800"}`}
+        className={`flex-1 h-7 rounded cursor-pointer transition-colors duration-100
+          ${value === option.value ? "bg-raised text-ink shadow-sm" : "text-ink-muted hover:text-ink"}`}
       >
         {option.label}
       </button>
@@ -28,262 +38,212 @@ const Segmented = <T extends string>({ value, options, onChange, disabled }: {
   </div>
 );
 
-const Toggle = ({ active, onClick, icon, title }: { active: boolean; onClick: () => void; icon: string; title: string }) => (
-  <button
-    type="button"
-    title={title}
-    onClick={onClick}
-    className={`flex-1 flex justify-center py-1 cursor-pointer duration-100 ${active ? "bg-blue-500" : "hover:bg-zinc-800"}`}
-  >
-    <Icon iconName={icon} fontSize="16px" color="white" />
-  </button>
-);
-
-const Switch = ({ checked, onChange, disabled }: { checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) => (
+const Switch = ({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) => (
   <button
     type="button"
     role="switch"
     aria-checked={checked}
+    aria-label={label}
     onClick={() => onChange(!checked)}
-    className={`relative w-8 h-4 rounded-full border border-zinc-600 duration-100 cursor-pointer
-      ${checked ? "bg-blue-500" : "bg-zinc-900"} ${disabled ? "opacity-40 pointer-events-none" : ""}`}
+    className={`relative w-8 h-[18px] rounded-full transition-colors duration-150 cursor-pointer flex-shrink-0
+      ${checked ? "bg-accent" : "bg-raised border border-line-strong"}`}
   >
-    <span className={`absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full bg-white duration-100 ${checked ? "translate-x-4" : ""}`} />
+    <span className={`absolute top-1/2 -translate-y-1/2 left-[3px] size-3 rounded-full bg-white transition-transform duration-150 ${checked ? "translate-x-3.5" : ""}`} />
   </button>
 );
 
-const PenOptions = () => {
-  const options = [2, 8, 32, 64];
-  const simplifyOptions = [0.5, 1, 2.5, 3];
+const Swatches = ({ value, onChange }: { value: string; onChange: (color: string) => void }) => (
+  <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Quick colors">
+    {SWATCHES.map(color => (
+      <button
+        key={color}
+        type="button"
+        role="radio"
+        aria-checked={value?.toLowerCase() === color}
+        aria-label={color}
+        onClick={() => onChange(color)}
+        className={`size-5 rounded-full cursor-pointer border border-white/10 transition-shadow
+          ${value?.toLowerCase() === color ? "ring-2 ring-accent ring-offset-2 ring-offset-surface" : "hover:ring-1 hover:ring-line-strong hover:ring-offset-1 hover:ring-offset-surface"}`}
+        style={{ backgroundColor: color }}
+      />
+    ))}
+  </div>
+);
 
+const Section = ({ title, children }: { title?: string; children: ReactNode }) => (
+  <section className="flex flex-col gap-2.5 px-4 py-3 border-t border-line first:border-t-0">
+    {title && <h3 className="text-xs font-medium text-ink-faint">{title}</h3>}
+    {children}
+  </section>
+);
+
+const Row = ({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) => (
+  <div className="flex items-center justify-between gap-3" title={hint}>
+    <span className="text-ink-muted">{label}</span>
+    {children}
+  </div>
+);
+
+const Slider = ({ value, min, max, step, onChange, format, label }: {
+  value: number; min: number; max: number; step: number; label: string;
+  onChange: (value: number) => void; format: (value: number) => string;
+}) => (
+  <div className="flex items-center gap-2 w-32">
+    <input
+      type="range"
+      aria-label={label}
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="range w-full"
+      style={{ "--fill": `${((value - min) / (max - min)) * 100}%` } as React.CSSProperties}
+    />
+    <span className="text-xs w-9 text-right text-ink tabular">{format(value)}</span>
+  </div>
+);
+
+const PenOptions = () => {
   const setOption = useCanvasStore(state => state.setOption);
-  const { color: currentColor, opacity, lineStyle, taper, arrowStart, arrowEnd, stabilizer, smartShapes } =
+  const { size, color, opacity, lineStyle, taper, arrowStart, arrowEnd, stabilizer, smartShapes, simplify } =
     useCanvasStore(state => state.options);
 
   return (
     <>
-      <div className="m-6 text-sm select-none">
-        <h1 className="text-xl -mx-2 -mt-2 my-8">Pen tool</h1>
-        <div className="flex flex-col gap-4">
-          <div>
-            <h1 className="text-md font-medium mb-1">Stroke</h1>
-            <div className="flex flex-row gap-6 items-center justify-between">
-              <p className="text-sm font-light">Weight</p>
-              <div className="w-22">
-                <EditableDropdown
-                  options={options}
-                  placeholder="24"
-                  onChange={(value: any) => setOption("size", value)}
-                />
-              </div>
-            </div>
-            <div className="flex flex-row gap-6 items-center justify-between mt-2">
-              <p className="text-sm font-light">Color</p>
-              <div className="w-22">
-                <Color onChange={(value: any) => setOption("color", value)} value={currentColor} />
-              </div>
-            </div>
-            <div className="flex flex-row gap-3 items-center justify-between mt-2">
-              <p className="text-sm font-light">Opacity</p>
-              <div className="w-22 flex items-center gap-1">
-                <input
-                  type="range"
-                  min={10}
-                  max={100}
-                  step={5}
-                  value={Math.round((opacity ?? 1) * 100)}
-                  onChange={(e) => setOption("opacity", Number(e.target.value) / 100)}
-                  className="w-full accent-blue-500 cursor-pointer"
-                />
-                <span className="text-xs w-8 text-right">{Math.round((opacity ?? 1) * 100)}%</span>
-              </div>
-            </div>
+      <Section>
+        <Row label="Weight">
+          <div className="w-32">
+            <EditableDropdown options={[2, 4, 8, 16, 32, 64]} value={size} placeholder="5" onChange={(value: any) => setOption("size", value)} />
           </div>
-          <div>
-            <h1 className="text-md font-medium mb-1">Style</h1>
-            <p className="text-sm font-light mb-1">Line</p>
-            <Segmented
-              value={lineStyle ?? "solid"}
-              onChange={(value) => setOption("lineStyle", value)}
-              disabled={taper !== "none"}
-              options={[
-                { value: "solid", label: "Solid" },
-                { value: "dashed", label: "Dash" },
-                { value: "dotted", label: "Dot" },
-              ]}
-            />
-            {taper !== "none" && <p className="text-xs text-zinc-400 mt-1">Dashes need taper off</p>}
-            <p className="text-sm font-light mb-1 mt-2">Taper</p>
-            <Segmented
-              value={taper ?? "none"}
-              onChange={(value) => setOption("taper", value)}
-              options={[
-                { value: "none", label: "None" },
-                { value: "ends", label: "Ends" },
-                { value: "speed", label: "Speed" },
-              ]}
-            />
-            <p className="text-sm font-light mb-1 mt-2">Arrows</p>
-            <div className="flex w-full border border-zinc-600">
-              <Toggle title="Arrow at start" icon="arrow_back" active={!!arrowStart} onClick={() => setOption("arrowStart", !arrowStart)} />
-              <Toggle title="Arrow at end" icon="arrow_forward" active={!!arrowEnd} onClick={() => setOption("arrowEnd", !arrowEnd)} />
-            </div>
+        </Row>
+        <Row label="Opacity">
+          <Slider label="Opacity" min={10} max={100} step={5} value={Math.round((opacity ?? 1) * 100)}
+            onChange={(v) => setOption("opacity", v / 100)} format={(v) => `${v}%`} />
+        </Row>
+        <Swatches value={color} onChange={(value) => setOption("color", value)} />
+        <Color onChange={(value: any) => setOption("color", value)} value={color} />
+      </Section>
+
+      <Section title="Style">
+        <Segmented
+          label="Line style"
+          value={lineStyle ?? "solid"}
+          onChange={(value) => setOption("lineStyle", value)}
+          disabled={taper !== "none"}
+          options={[
+            { value: "solid", label: "Solid" },
+            { value: "dashed", label: "Dashed" },
+            { value: "dotted", label: "Dotted" },
+          ]}
+        />
+        <Segmented
+          label="Taper"
+          value={taper ?? "none"}
+          onChange={(value) => setOption("taper", value)}
+          options={[
+            { value: "none", label: "No taper" },
+            { value: "ends", label: "Ends" },
+            { value: "speed", label: "Speed" },
+          ]}
+        />
+        {taper !== "none" && <p className="text-xs text-ink-faint -mt-1">Dashed and dotted lines need taper off.</p>}
+        <Row label="Arrows">
+          <div className="flex gap-1">
+            <IconButton icon="west" label="Arrow at start" active={!!arrowStart} onClick={() => setOption("arrowStart", !arrowStart)} />
+            <IconButton icon="east" label="Arrow at end" active={!!arrowEnd} onClick={() => setOption("arrowEnd", !arrowEnd)} />
           </div>
-          <div>
-            <h1 className="text-md font-medium mb-1">Stability</h1>
-            <div className="flex flex-row gap-6 items-center justify-between">
-              <p className="text-sm font-light">Simplify</p>
-              <div className="w-22">
-                <EditableDropdown
-                  options={simplifyOptions}
-                  placeholder="1"
-                  onChange={(value: any) => setOption("simplify", value)}
-                />
-              </div>
-            </div>
-            <div className="flex flex-row gap-3 items-center justify-between mt-2" title="Smooths out hand jitter; the line trails your cursor">
-              <p className="text-sm font-light">Stabilizer</p>
-              <div className="w-22 flex items-center gap-1">
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={stabilizer ?? 0}
-                  onChange={(e) => setOption("stabilizer", Number(e.target.value))}
-                  className="w-full accent-blue-500 cursor-pointer"
-                />
-                <span className="text-xs w-8 text-right">{stabilizer ?? 0}</span>
-              </div>
-            </div>
-            <div className="flex flex-row gap-3 items-center justify-between mt-2" title="Rough rectangles, squares, circles and ellipses snap into clean shapes">
-              <p className="text-sm font-light">Smart shapes</p>
-              <Switch checked={!!smartShapes} onChange={(value) => setOption("smartShapes", value)} />
-            </div>
+        </Row>
+      </Section>
+
+      <Section title="Stability">
+        <Row label="Stabilizer" hint="Smooths out hand jitter; the line trails your cursor">
+          <Slider label="Stabilizer" min={0} max={100} step={5} value={stabilizer ?? 0}
+            onChange={(v) => setOption("stabilizer", v)} format={(v) => `${v}`} />
+        </Row>
+        <Row label="Simplify" hint="How far, in screen pixels, a finished stroke may be simplified">
+          <div className="w-32">
+            <EditableDropdown options={[0.5, 1, 2.5, 3]} value={simplify ?? 0.5} placeholder="0.5" onChange={(value: any) => setOption("simplify", value)} />
           </div>
-        </div>
-      </div>
+        </Row>
+        <Row label="Smart shapes" hint="Rough rectangles, squares, circles and ellipses snap into clean shapes">
+          <Switch label="Smart shapes" checked={!!smartShapes} onChange={(value) => setOption("smartShapes", value)} />
+        </Row>
+      </Section>
     </>
-  )
-}
+  );
+};
 
 const TextOptions = () => {
-  const fontSize = [8, 9, 11, 12, 14, 18, 24, 30, 36, 48, 60, 72, 96];
   const setOption = useCanvasStore(state => state.setOption);
-  const currentColor = useCanvasStore().options.color;
+  const { fontSize, color } = useCanvasStore(state => state.options);
 
   return (
-    <>
-      <div className="m-6 text-sm select-none">
-        <h1 className="text-xl -mx-2 -mt-2 my-8">Text tool</h1>
-        <div className="flex flex-col gap-4">
-          <div>
-            <div className="flex flex-row gap-6 items-center justify-between mt-2">
-              <p className="text-sm font-light">Size</p>
-              <div className="w-22">
-                <EditableDropdown
-                  options={fontSize}
-                  placeholder="16"
-                  onChange={(value: any) => setOption("fontSize", value)}
-                />
-              </div>
-            </div>
-            <div className="flex flex-row gap-6 items-center justify-between mt-2">
-              <p className="text-sm font-light">Color</p>
-              <div className="w-22">
-                <Color onChange={(value: any) => setOption("color", value)} value={currentColor} />
-              </div>
-            </div>
-          </div>
+    <Section>
+      <Row label="Size">
+        <div className="w-32">
+          <EditableDropdown options={[8, 9, 11, 12, 14, 18, 24, 30, 36, 48, 60, 72, 96]} value={fontSize} placeholder="16"
+            onChange={(value: any) => setOption("fontSize", value)} />
         </div>
-      </div>
-    </>
-  )
-}
+      </Row>
+      <Swatches value={color} onChange={(value) => setOption("color", value)} />
+      <Color onChange={(value: any) => setOption("color", value)} value={color} />
+    </Section>
+  );
+};
 
 export const CanvasOptions = ({ roomId }: { roomId: string }) => {
   const saveStageState = useCanvasStore(state => state.saveStageState);
-  const currentColor = useCanvasStore().loadStageState(roomId)?.backgroundColor;
-  const borderColor = useCanvasStore().loadStageState(roomId)?.borderColor;
+  const stage = useCanvasStore(state => state.stageStates[roomId]);
 
   return (
-    <>
-      <div className="m-6 text-sm select-none">
-        <h1 className="text-xl -mx-2 -mt-2 my-8">Canvas options</h1>
-        <div className="flex flex-col gap-4">
-          <div>
-            <div className="flex flex-row gap-6 items-center justify-between mt-2">
-              <p className="text-sm font-light">Color</p>
-              <div className="w-22">
-                <Color onChange={(value: string) => saveStageState(roomId, { backgroundColor: value })} value={currentColor!} />
-              </div>
-            </div>
-            <div className="flex flex-row gap-6 items-center justify-between mt-2">
-              <p className="text-sm font-light">Border</p>
-              <div className="w-22">
-                <Color onChange={(value: string) => saveStageState(roomId, { borderColor: value })} value={borderColor!} />
-              </div>
-            </div>
-          </div>
+    <Section>
+      <Row label="Background">
+        <div className="w-32">
+          <Color onChange={(value: string) => saveStageState(roomId, { backgroundColor: value })} value={stage?.backgroundColor ?? "#18191c"} />
         </div>
-      </div>
-    </>
-  )
-}
+      </Row>
+      <Row label="Grid lines">
+        <div className="w-32">
+          <Color onChange={(value: string) => saveStageState(roomId, { borderColor: value })} value={stage?.borderColor ?? "#2a2c31"} />
+        </div>
+      </Row>
+    </Section>
+  );
+};
+
+const PANELS: Record<string, { title: string; icon: string; Component: FC<{ roomId: string }> }> = {
+  pen: { title: "Pen", icon: "edit", Component: PenOptions },
+  text: { title: "Text", icon: "text_fields", Component: TextOptions },
+  canvas: { title: "Canvas settings", icon: "tune", Component: CanvasOptions },
+};
 
 export const ToolOptions = ({ roomId }: { roomId: string }) => {
-  const TOOL_OPTIONS: Record<string, FC<any>> = {
-    pen: PenOptions,
-    text: TextOptions,
-    settings: CanvasOptions
-  };
+  const compact = useIsCompact();
   const tool = useCanvasStore(state => state.tool);
-  const isMobile = useIsMobile();
+  const open = useCanvasStore(state => state.toolOptionsOpen);
+  const optionsPanel = useCanvasStore(state => state.optionsPanel);
+  const setOpen = useCanvasStore(state => state.setToolOptionsOpen);
 
-  const isTappedOpen = useCanvasStore(state => state.toolOptionsOpen);
-  const setIsTappedOpen = useCanvasStore(state => state.setToolOptionsOpen);
-
-  const ToolComponent = TOOL_OPTIONS[tool];
-
-  if (tool == "select")
-    return <></>
+  const key = optionsPanel === "canvas" ? "canvas" : tool;
+  const panel = PANELS[key];
+  if (!open || !panel) return null;
+  const { title, icon, Component } = panel;
 
   return (
-    <>
-      <div 
-        className={`flex flex-col w-52 hover:translate-x-0 rounded-r-2xl bg-neutral-950 fixed min-h-72 h-auto top-1/2
-        -translate-y-1/2 left-0 z-3 transform duration-150 border-border border-1 text-white group
-        ${isMobile ? "-translate-x-48" : "-translate-x-44"} shadow-2xl shadow-black/50
-        ${isTappedOpen ? "translate-x-0 shadow-2xl" : ""} ${tool}-options`}
-        
-        onClick={(e) => {
-          if (isMobile && !isTappedOpen) {
-            e.stopPropagation();
-            setIsTappedOpen(true);
-          }
-        }}
-      >
-        <PinComponent 
-          isPinned={isTappedOpen} 
-          onClick={() => setIsTappedOpen(!isTappedOpen)} 
-          className={`duration-200 transition-opacity group-hover:opacity-100
-            ${isTappedOpen ? "opacity-100" : "opacity-0"}`}
-        />
-        <div className={`flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-white left-0 top-0 ${isTappedOpen ? "opacity-100" : ""}`}>
-          {ToolComponent ?
-            <ToolComponent roomId={roomId} />
-            :
-            null
-          }
-        </div>
-      </div>
-      
-      {isMobile && isTappedOpen && (
-        <div 
-          className="fixed inset-0 z-2 bg-transparent"
-          onClick={() => setIsTappedOpen(false)}
-        />
-      )}
-    </>
+    <aside
+      aria-label={`${title} options`}
+      className={`${key === "canvas" ? "settings" : key}-options island fixed z-20 w-64 text-sm text-ink select-none
+        ${compact
+          ? "left-3 right-3 w-auto bottom-[72px] max-h-[calc(100dvh-150px)] overflow-y-auto overflow-x-hidden scrollbar-thin"
+          : "left-[68px] top-1/2 -translate-y-1/2"}`}
+    >
+      <header className="flex items-center gap-2 pl-4 pr-1.5 h-11 border-b border-line">
+        <Icon iconName={icon} fontSize="18px" className="text-ink-muted" />
+        <h2 className="font-medium flex-1">{title}</h2>
+        <IconButton icon="close" label="Close" onClick={() => setOpen(false)} tooltip="bottom" />
+      </header>
+      <Component roomId={roomId} />
+    </aside>
   );
 };
