@@ -3,6 +3,7 @@ import { Stage, Layer } from "react-konva";
 import useWindowDimensions from "../../hooks/useWindowDimensions";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
+import { Awareness } from "y-protocols/awareness";
 import { PenTool } from "./tools/penTool";
 import { TextTool } from "./tools/textTool";
 import { CanvasObject, Tool } from "./tools/baseTool";
@@ -102,6 +103,10 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   // and each undo manager stays subscribed to the doc
   const [ydoc] = useState(() => new Y.Doc());
   const [yObjects] = useState(() => ydoc.getMap<any>("objects"));
+  // One awareness for the doc's lifetime, shared by every provider. A new one per provider
+  // (e.g. after a hot reload) restarts its clock under the same client id, and everyone
+  // ignores its cursor as outdated until the clock catches up.
+  const [docAwareness] = useState(() => new Awareness(ydoc));
   const providerRef = useRef<WebsocketProvider | null>(null);
   const awarenessRef = useRef<any>(null);
   // Set once connected, for the cursor overlay
@@ -272,7 +277,8 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     providerRef.current = new WebsocketProvider(
       `${wsUrl}/${roomName}/${token}`,
       "",
-      ydoc
+      ydoc,
+      { awareness: docAwareness }
     );
 
     awarenessRef.current = providerRef.current.awareness;
@@ -328,13 +334,15 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
 
     return () => {
       awareness.off('change', handleAwareness);
+      // Tell the others we left (sent before the socket closes), so no cursor is left behind
+      awareness.setLocalState(null);
       useCanvasStore.setState({ peers: [] });
       yObjects.unobserveDeep(handleObjects);
       providerRef.current?.off('status', handleStatus);
       providerRef.current?.off('sync', handleSync);
       providerRef.current?.disconnect();
     };
-  }, [updateObjectsFromYjs, yObjects]);
+  }, [updateObjectsFromYjs, yObjects, docAwareness]);
 
   // The objects don't depend on the view, so zooming and panning reuse the same elements
   const renderedObjects = useMemo(() => objects.map((obj) => {
