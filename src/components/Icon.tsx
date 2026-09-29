@@ -8,6 +8,7 @@ const Icon: React.FC<{
 }> = ({ iconName, fontSize = '24px', color, className = '' }) => {
   return (
     <span 
+      aria-hidden="true"
       className={`material-symbols-outlined font-thin ${className}`}
       style={{ fontSize: fontSize, color: color }}
     >

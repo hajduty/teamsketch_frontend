@@ -1,23 +1,17 @@
 import { useEffect } from 'react';
-import Icon from '../../../components/Icon';
-import { useIsMobile } from '../../../hooks/useIsMobile';
+import { IconButton } from '../../../components/IconButton';
+import { useIsCompact } from '../../../hooks/useIsCompact';
 import { useCanvasStore } from '../canvasStore';
 
 export const HistoryButtons = () => {
-  const isMobile = useIsMobile();
+  const compact = useIsCompact();
 
   const undo = useCanvasStore((state) => state.undo);
   const redo = useCanvasStore((state) => state.redo);
-  const deleteObject = useCanvasStore((state) => state.delete);
+  const zoom = useCanvasStore((state) => state.zoom);
+  const viewControls = useCanvasStore((state) => state.viewControls);
   const canUndo = useCanvasStore((state) => state.canUndo);
   const canRedo = useCanvasStore((state) => state.canRedo);
-  const canDelete = useCanvasStore((state) => state.canDelete);
-  const setCanDelete = useCanvasStore((state) => state.setCanDelete);
-
-  const handleDelete = () => {
-    setCanDelete(false);
-    deleteObject();
-  }
 
   // Keyboard shortcuts for the same actions as the buttons below
   useEffect(() => {
@@ -50,39 +44,29 @@ export const HistoryButtons = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // On phones undo/redo are part of the bottom toolbar and zoom is by pinch
+  if (compact) return null;
+
   return (
-    <div className={`bottom-0 right-0 flex md:flex-row flex-col gap-2 w-auto rounded-r-2xl fixed z-3 text-white group m-2 history-buttons ${isMobile ? "":"flex-col-reverse"}`}>
-      <button
-        type="button"
-        className={`p-2 bg-neutral-950 border border-t-zinc-700 border-zinc-800 rounded-md flex  ${canDelete ? "bg-neutral-950 hover:bg-zinc-800" : "bg-neutral-600 text-neutral-700"}`}
-        onClick={handleDelete}
-        disabled={!canDelete}
-        title="Delete (Del)"
-      >
-        <Icon iconName="delete" color="redo" />
-      </button>
-
-      <button
-        type="button"
-        className={`p-2 bg-neutral-950 border border-t-zinc-700 border-zinc-800 rounded-md flex ${canUndo ? "bg-neutral-950 hover:bg-zinc-800" : "bg-neutral-600 text-neutral-700"}`}
-        onClick={undo}
-        disabled={!canUndo}
-        title="Undo (Ctrl+Z)"
-      >
-        <Icon iconName="undo" color="redo" />
-        {!isMobile}
-      </button>
-
-      <button
-        type="button"
-        className={`p-2 bg-neutral-950 border border-t-zinc-700 border-zinc-800 rounded-md flex ${canRedo ? "bg-neutral-950 hover:bg-zinc-800" : "bg-neutral-600 text-neutral-700"}`}
-        onClick={redo}
-        disabled={!canRedo}
-        title="Redo (Ctrl+Y)"
-      >
-        <Icon iconName="redo" color="redo" />
-        {!isMobile}
-      </button>
+    <div className="history-buttons fixed z-20 flex gap-2 left-3 bottom-3">
+      <div className="island flex gap-0.5 p-1" role="group" aria-label="History">
+        <IconButton icon="undo" label="Undo" shortcut="Ctrl+Z" onClick={undo} disabled={!canUndo} />
+        <IconButton icon="redo" label="Redo" shortcut="Ctrl+Y" onClick={redo} disabled={!canRedo} />
+      </div>
+      {viewControls && (
+        <div className="island flex items-center gap-0.5 p-1" role="group" aria-label="Zoom">
+          <IconButton icon="remove" label="Zoom out" onClick={viewControls.zoomOut} />
+          <button
+            type="button"
+            onClick={viewControls.resetZoom}
+            title="Reset to 100%"
+            className="h-9 min-w-14 px-1.5 rounded-lg text-xs text-ink-muted hover:bg-raised hover:text-ink cursor-pointer tabular"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <IconButton icon="add" label="Zoom in" onClick={viewControls.zoomIn} />
+        </div>
+      )}
     </div>
   );
 }

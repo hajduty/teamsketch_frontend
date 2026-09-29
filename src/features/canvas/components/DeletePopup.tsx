@@ -64,7 +64,7 @@ export const DeletePopup = ({
     <>
       <div
         className={`fixed inset-0 bg-black transition-opacity duration-200 ${
-          isVisible ? "opacity-80" : "opacity-0"
+          isVisible ? "opacity-60" : "opacity-0"
         } z-10`}
         onClick={handleBackdropClick}
       />
@@ -73,7 +73,7 @@ export const DeletePopup = ({
         onClick={handleBackdropClick}
       >
         <div
-          className={`bg-neutral-950 text-white rounded-md p-6 w-96 max-w-[90vw] border border-neutral-700 flex flex-col gap-4 shadow-lg
+          className={`bg-surface text-white rounded-xl p-6 w-96 max-w-[90vw] border border-line flex flex-col gap-4 shadow-lg
             transform transition-all duration-200 ease-in-out
             ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}
           `}
@@ -84,7 +84,7 @@ export const DeletePopup = ({
             <h2 className="text-lg font-semibold text-white">Delete Room</h2>
             <Button
               onClick={handleClose}
-              className="hover:bg-neutral-800 border border-transparent p-1 rounded-md transition-colors"
+              className="hover:bg-raised border border-transparent p-1 rounded-md transition-colors"
             >
               <Icon iconName="close" color="white" fontSize="16px" />
             </Button>
@@ -96,13 +96,13 @@ export const DeletePopup = ({
               <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                 <Icon iconName="warning" color="#ef4444" fontSize="20px" />
               </div>
-              <p className="text-neutral-300 text-sm leading-relaxed">
+              <p className="text-ink text-sm leading-relaxed">
                 Are you sure you want to remove this room? This action cannot be undone and all its contents will permanently be deleted.
               </p>
             </div>
           </div>
 
-          <div className="bg-neutral-900/50 rounded p-3 space-y-1 text-xs">
+          <div className="bg-canvas/60 rounded p-3 space-y-1 text-xs">
             <p><span className="font-semibold">RoomId:</span> {room.room}</p>
             <p><span className="font-semibold">Role:</span> {room.role}</p>
             <p><span className="font-semibold">Created At:</span> {
@@ -115,7 +115,7 @@ export const DeletePopup = ({
           <div className="flex flex-row gap-3 justify-end mt-2">
             <Button
               onClick={handleClose}
-              className="px-4 py-2 rounded border border-neutral-600 hover:bg-neutral-800 transition-colors text-sm disabled:opacity-50"
+              className="px-4 py-2 rounded border border-line-strong hover:bg-raised transition-colors text-sm disabled:opacity-50"
             >
               Cancel
             </Button>

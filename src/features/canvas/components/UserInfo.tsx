@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useState } from "react";
 import { Button } from "../../../components/Button";
 import Icon from "../../../components/Icon";
@@ -20,21 +21,24 @@ export const UserInfo = () => {
 
   return (
     <>
-      <div className="fixed top-0 right-0 m-4">
-        <button
-          onClick={openModal}
-          className="p-2 cursor-pointer bg-blue-600 border border-blue-500 rounded-md flex hover:bg-blue-500 transition duration-75"
-        >
-          <Icon iconName="account_circle" color="white" />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={openModal}
+        aria-label="Account"
+        title={user?.email ?? "Account"}
+        className="flex items-center justify-center size-9 rounded-lg cursor-pointer hover:bg-raised transition-colors"
+      >
+        <span className="flex items-center justify-center size-7 rounded-full bg-raised border border-line-strong text-xs font-semibold text-ink uppercase">
+          {user?.email?.[0] ?? "?"}
+        </span>
+      </button>
 
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <>
           <div
-            className={`absolute inset-0 bg-black transition-opacity duration-200 ${
-              isVisible ? "opacity-80" : "opacity-0"
-            } z-10`}
+            className={`fixed inset-0 bg-black transition-opacity duration-200 ${
+              isVisible ? "opacity-60" : "opacity-0"
+            } z-40`}
             onClick={closeModal}
           />
           <div
@@ -42,7 +46,7 @@ export const UserInfo = () => {
             onClick={closeModal}
           >
             <div
-              className={`bg-neutral-950 text-white rounded-md p-5 sm:w-[380px] w-5/6 border border-neutral-700 flex flex-col gap-4 shadow-lg
+              className={`bg-surface text-white rounded-xl p-5 sm:w-[380px] w-5/6 border border-line flex flex-col gap-4 shadow-lg
                 transform transition-all duration-200 ease-in-out
                 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}
               `}
@@ -51,14 +55,14 @@ export const UserInfo = () => {
               {/* Header */}
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-accent-soft rounded-full flex items-center justify-center">
                     <Icon iconName="person" color="#3b82f6" fontSize="16px" />
                   </div>
-                  <h2 className="text-lg font-semibold">User Info</h2>
+                  <h2 className="text-lg font-semibold">Account</h2>
                 </div>
                 <Button
                   onClick={closeModal}
-                  className="hover:bg-neutral-800 border border-transparent p-1 rounded-md transition-colors"
+                  className="hover:bg-raised border border-transparent p-1 rounded-md transition-colors"
                 >
                   <Icon iconName="close" color="white" fontSize="16px" />
                 </Button>
@@ -67,17 +71,17 @@ export const UserInfo = () => {
               {/* User Details */}
               {user ? (
                 <div className="flex flex-col gap-3 text-sm">
-                  <div className="flex justify-between border-b border-neutral-800 pb-1">
-                    <span className="text-neutral-400">Email</span>
+                  <div className="flex justify-between border-b border-line pb-1">
+                    <span className="text-ink-muted">Email</span>
                     <span className="text-white">{user.email}</span>
                   </div>
-                  <div className="flex justify-between border-b border-neutral-800 pb-1">
-                    <span className="text-neutral-400">User ID</span>
+                  <div className="flex justify-between border-b border-line pb-1">
+                    <span className="text-ink-muted">User ID</span>
                     <span className="text-white">{user.id || "—"}</span>
                   </div>
                 </div>
               ) : (
-                <p className="text-neutral-400 text-sm">
+                <p className="text-ink-muted text-sm">
                   No user information available.
                 </p>
               )}
@@ -86,15 +90,16 @@ export const UserInfo = () => {
               <div className="mt-4 flex justify-end">
                 <Button
                   onClick={logout}
-                  className="bg-red-600 hover:bg-red-500 px-3 py-2 rounded-md text-white transition duration-100 flex items-center gap-1"
+                  className="bg-danger/12 hover:bg-danger/20 text-danger px-3 h-9 rounded-lg transition-colors duration-100 flex items-center gap-1.5 text-sm font-medium cursor-pointer"
                 >
                   <Icon iconName="logout" color="white" fontSize="16px" />
-                  Logout
+                  Log out
                 </Button>
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   );

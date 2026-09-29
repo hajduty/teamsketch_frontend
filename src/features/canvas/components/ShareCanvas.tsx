@@ -1,3 +1,10 @@
+import { createPortal } from "react-dom";
+import { Select, SelectOption } from "../../../components/Select";
+
+const ROLE_OPTIONS: SelectOption<string>[] = [
+  { value: "viewer", label: "Viewer", description: "Can view the room" },
+  { value: "editor", label: "Editor", description: "Can draw and edit" },
+];
 import { useState, useEffect } from "react";
 import { Button } from "../../../components/Button";
 import Icon from "../../../components/Icon";
@@ -30,7 +37,7 @@ const GuestView = ({
       onClick={onClose}
     >
       <div
-        className={`bg-neutral-950 text-white rounded-md p-6 w-96 max-w-[90vw] border border-neutral-700 flex flex-col gap-4 shadow-lg
+        className={`bg-surface text-white rounded-xl p-6 w-96 max-w-[90vw] border border-line flex flex-col gap-4 shadow-lg
           transform transition-all duration-200 ease-in-out
           ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}
         `}
@@ -38,20 +45,20 @@ const GuestView = ({
       >
         {/* Header */}
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-white">Share Canvas</h2>
+          <h2 className="text-lg font-semibold text-white">Share room</h2>
           <Button
             onClick={onClose}
-            className="hover:bg-neutral-800 border border-transparent p-1 rounded-md transition-colors"
+            className="hover:bg-raised border border-transparent p-1 rounded-md transition-colors"
           >
             <Icon iconName="close" color="white" fontSize="16px" />
           </Button>
         </div>
 
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 bg-accent-soft rounded-full flex items-center justify-center flex-shrink-0">
             <Icon iconName="share" color="#3b82f6" fontSize="18px" />
           </div>
-          <p className="text-neutral-300 text-sm leading-relaxed">
+          <p className="text-ink text-sm leading-relaxed">
             This canvas is public! Just copy this link to share it with anyone.
           </p>
         </div>
@@ -59,12 +66,12 @@ const GuestView = ({
         <div className="flex items-center gap-2">
           <input
             readOnly
-            className="bg-neutral-900 text-white px-3 py-2 border border-neutral-700 flex-1 rounded-md text-sm"
+            className="bg-canvas text-ink px-3 h-9 border border-line-strong flex-1 rounded-md text-sm outline-none focus:border-accent"
             value={`${window.location.origin}/${roomId}`}
           />
           <Button
             onClick={copyToClipboard}
-            className="bg-neutral-800 hover:bg-neutral-700 text-sm px-3 py-2 rounded-md transition-colors"
+            className="bg-raised hover:bg-raised text-sm px-3 py-2 rounded-md transition-colors"
           >
             {copied ? "Copied!" : "Copy"}
           </Button>
@@ -180,45 +187,47 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
 
   return (
     <>
-      <div className="fixed top-0 right-14 m-4 z-2 share-canvas">
-        <button
-          onClick={openModal}
-          className="p-2 cursor-pointer bg-blue-600 border border-blue-500 rounded-md flex hover:bg-blue-500 transition duration-75"
-        >
-          <Icon iconName="share" color="white" />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={openModal}
+        aria-label="Share"
+        className="share-canvas flex items-center gap-1.5 h-9 pl-2.5 pr-3.5 max-sm:px-2 rounded-lg bg-accent hover:bg-accent-hover text-white text-sm font-medium cursor-pointer transition-colors"
+      >
+        <Icon iconName="person_add" fontSize="18px" />
+        <span className="max-sm:hidden">Share</span>
+      </button>
 
       {/* Guest view */}
-      {isModalOpen && guest && (
+      {isModalOpen && guest && createPortal(
         <>
           <div
             className={`fixed inset-0 bg-black transition-opacity duration-200 ${
-              isVisible ? "opacity-80" : "opacity-0"
-            } z-30`}
+              isVisible ? "opacity-60" : "opacity-0"
+            } z-40`}
           />
           <GuestView
             roomId={roomId}
             onClose={closeModal}
             isVisible={isVisible}
           />
-        </>
+        </>,
+        document.body
       )}
 
       {/* Authenticated view */}
-      {isModalOpen && !guest && (
+      {isModalOpen && !guest && createPortal(
         <>
           <div
             className={`fixed inset-0 bg-black transition-opacity duration-200 ${
-              isVisible ? "opacity-80" : "opacity-0"
-            } z-30`}
+              isVisible ? "opacity-60" : "opacity-0"
+            } z-40`}
           />
           <div
             className="fixed inset-0 z-50 flex items-center justify-center"
             onClick={closeModal}
           >
             <div
-              className={`bg-neutral-950 text-white rounded-md p-6 w-[32rem] max-w-[90vw] max-h-[85vh] overflow-y-auto border border-neutral-700 flex flex-col gap-5 shadow-lg
+              className={`bg-surface text-white rounded-xl p-6 w-[32rem] max-w-[90vw] max-h-[85vh] overflow-y-auto border border-line flex flex-col gap-5 shadow-lg
                 transform transition-all duration-200 ease-in-out
                 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}
               `}
@@ -227,16 +236,16 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
               {/* Header */}
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-accent-soft rounded-full flex items-center justify-center">
                     <Icon iconName="share" color="#3b82f6" fontSize="18px" />
                   </div>
                   <h2 className="text-lg font-semibold text-white">
-                    Share Canvas
+                    Share room
                   </h2>
                 </div>
                 <Button
                   onClick={closeModal}
-                  className="hover:bg-neutral-800 border border-transparent p-1 rounded-md transition-colors"
+                  className="hover:bg-raised border border-transparent p-1 rounded-md transition-colors"
                 >
                   <Icon iconName="close" color="white" fontSize="16px" />
                 </Button>
@@ -248,21 +257,20 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
                   placeholder="User email"
                   value={userEmail}
                   onChange={(e) => setUserEmail(e.target.value)}
-                  className="flex-1 min-w-0 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm placeholder:text-neutral-400 text-white focus:outline-none"
+                  className="flex-1 min-w-0 h-9 rounded-md border border-line-strong bg-canvas px-3 text-sm placeholder:text-ink-faint text-ink outline-none focus:border-accent transition-colors"
                 />
 
-                <select
+                <Select
+                  label="Role"
                   value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                  className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm text-white focus:outline-none"
-                >
-                  <option value="viewer">Viewer</option>
-                  <option value="editor">Editor</option>
-                </select>
+                  options={ROLE_OPTIONS}
+                  onChange={setSelectedRole}
+                  className="w-28"
+                />
 
                 <Button
                   onClick={addUser}
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-md flex items-center gap-1 text-sm font-medium transition-colors"
+                  className="bg-accent hover:bg-accent-hover text-white px-3 py-2 rounded-md flex items-center gap-1 text-sm font-medium transition-colors"
                 >
                   <Icon iconName="add" color="white" fontSize="16px" />
                   Add
@@ -280,12 +288,12 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
                   <div className="flex items-center gap-2">
                     <input
                       readOnly
-                      className="bg-neutral-900 text-white px-3 py-2 border border-neutral-700 flex-1 rounded-md text-sm"
+                      className="bg-canvas text-ink px-3 h-9 border border-line-strong flex-1 rounded-md text-sm outline-none focus:border-accent"
                       value={`${window.location.origin}/${roomId}`}
                     />
                     <Button
                       onClick={copyToClipboard}
-                      className="bg-neutral-800 hover:bg-neutral-700 text-sm px-3 py-2 rounded-md transition-colors"
+                      className="bg-raised hover:bg-raised text-sm px-3 py-2 rounded-md transition-colors"
                     >
                       Copy
                     </Button>
@@ -296,7 +304,7 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
               {/* Accordion */}
               <div>
                 <h3
-                  className="font-medium mb-2 cursor-pointer flex items-center gap-1 select-none text-neutral-300"
+                  className="font-medium mb-2 cursor-pointer flex items-center gap-1 select-none text-ink"
                   onClick={() => setIsAccordionOpen((prev) => !prev)}
                 >
                   <Icon
@@ -306,7 +314,7 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
                     color="white"
                     fontSize="18px"
                   />
-                  Added Users
+                  People with access
                 </h3>
 
                 <div
@@ -318,39 +326,34 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
                     {permissions.map((perm) => (
                       <li
                         key={perm.userEmail}
-                        className="flex justify-between items-center border border-neutral-700 rounded-md p-2 bg-neutral-900/50"
+                        className="flex justify-between items-center border border-line rounded-md p-2 bg-canvas/60"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-neutral-200">
+                          <span className="text-ink">
                             {perm.userEmail}
                             {perm.role === "Owner" && (
-                              <span className="text-neutral-500 text-xs ml-1">
+                              <span className="text-ink-faint text-xs ml-1">
                                 (Owner)
                               </span>
                             )}
                           </span>
 
                           {perm.role !== "Owner" && (
-                            <select
+                            <Select
+                              label={`Role for ${perm.userEmail}`}
+                              size="sm"
                               value={perm.role}
-                              onChange={(e) =>
-                                updateUserRole(
-                                  perm.userEmail,
-                                  e.target.value
-                                )
-                              }
-                              className="bg-neutral-900 border border-neutral-700 text-white rounded px-2 py-1 text-sm"
-                            >
-                              <option value="viewer">Viewer</option>
-                              <option value="editor">Editor</option>
-                            </select>
+                              options={ROLE_OPTIONS}
+                              onChange={(role) => updateUserRole(perm.userEmail, role)}
+                              className="w-24"
+                            />
                           )}
                         </div>
 
                         {perm.role !== "Owner" && (
                           <Button
                             onClick={() => deleteUser(perm)}
-                            className="border border-neutral-700 hover:bg-neutral-800 p-1 rounded-md transition-colors"
+                            className="border border-line hover:bg-raised p-1 rounded-md transition-colors"
                           >
                             <Icon iconName="delete" color="#ef4444" />
                           </Button>
@@ -362,7 +365,8 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   );
