@@ -12,6 +12,7 @@ interface GridProps {
 const BASE_WIDTH = 200;
 const BASE_HEIGHT = 200;
 const CELL_LIMIT = 500;
+const LINE_WIDTH_PX = 1;
 
 /**
  * Background and cell borders for the visible area. Drawn in one shape from the stage's
@@ -72,7 +73,8 @@ const InfiniteGrid: FC<GridProps> = ({ stageRef, roomId }) => {
       ctx.lineTo(endX, y);
     }
     ctx.strokeStyle = borderColor;
-    ctx.lineWidth = cellSizeMultiplier > 4 ? 2 : cellSizeMultiplier > 2 ? 1 : 0.5;
+    // Same on-screen thickness at any zoom (the context is scaled by the stage)
+    ctx.lineWidth = LINE_WIDTH_PX / scale;
     ctx.stroke();
   };
 
