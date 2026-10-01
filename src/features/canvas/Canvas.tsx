@@ -12,6 +12,7 @@ import PenRender from "./components/PenRender";
 import { useIsDoubleClick } from "../../hooks/useIsDoubleClick";
 import { RemoteCursors } from "./components/RemoteCursors";
 import { colorFor, readPeers } from "./presence";
+import { bindLocalCanvas, GUEST_OWNER, loadLocalCanvas } from "./localCanvas";
 import { SelectTool } from "./tools/selectTool";
 import InfiniteGrid from "./components/InfiniteGrid";
 import { Minimap } from "./components/Minimap";
@@ -23,7 +24,6 @@ import { useShallow } from "zustand/react/shallow";
 import Konva from "konva";
 import { useCanvasInteractions } from "../../hooks/useCanvasInteractions";
 import { wsUrl } from "../../lib/apiClient";
-import { Permissions } from "../../types/permission";
 
 export interface CanvasRef {
   clearCanvas: () => void;
@@ -98,10 +98,18 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const [isDrawing, setIsDrawing] = useState(false);
   const currentState = useRef<any>({});
 
+  // This device's copy of the room: a guest's only copy, an account's offline cache
+  const localOwner = guest ? GUEST_OWNER : user?.id;
+
   // Yjs setup
   // Lazy initialisers: useRef(new ...) would build a new doc/undo manager on every render,
-  // and each undo manager stays subscribed to the doc
-  const [ydoc] = useState(() => new Y.Doc());
+  // and each undo manager stays subscribed to the doc. The saved copy is loaded first, so the
+  // canvas shows straight away (and offline) and loading it isn't an undoable change.
+  const [ydoc] = useState(() => {
+    const doc = new Y.Doc();
+    if (localOwner) loadLocalCanvas(localOwner, roomId, doc);
+    return doc;
+  });
   const [yObjects] = useState(() => ydoc.getMap<any>("objects"));
   // One awareness for the doc's lifetime, shared by every provider. A new one per provider
   // (e.g. after a hot reload) restarts its clock under the same client id, and everyone
@@ -109,8 +117,13 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const [docAwareness] = useState(() => new Awareness(ydoc));
   const providerRef = useRef<WebsocketProvider | null>(null);
   const awarenessRef = useRef<any>(null);
-  // Set once connected, for the cursor overlay
+  // Set once set up, for the cursor overlay
   const [awareness, setAwareness] = useState<any>(null);
+  // Accounts: whether the server is reachable. Guests never connect.
+  const [online, setOnline] = useState(false);
+  // Don't flash "offline" while the first connection is still being made
+  const [connectGraceOver, setConnectGraceOver] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
 
   const [undoManager] = useState(() => new Y.UndoManager(yObjects, {
     captureTimeout: 200,
@@ -121,13 +134,12 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
 
   // Pick only what the board uses: subscribing to the whole store re-rendered every object
   // on unrelated updates, e.g. the zoom level and saved view written on each wheel tick
-  const { tool: activeTool, options: toolOptions, init: initCanvasStore, editingId, addGuestRoom } = useCanvasStore(
+  const { tool: activeTool, options: toolOptions, init: initCanvasStore, editingId } = useCanvasStore(
     useShallow(state => ({
       tool: state.tool,
       options: state.options,
       init: state.init,
       editingId: state.editingId,
-      addGuestRoom: state.addGuestRoom,
     }))
   );
 
@@ -210,12 +222,9 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     return () => clearTimeout(timer);
   }, [awareness, stagePosition, stageScale, width, height]);
 
-  const [isConnected, setIsConnected] = useState(false);
-
+  // Restore this room's saved view
   useEffect(() => {
     if (!roomId || !stageRef.current) return;
-
-    if (!isConnected) return;
 
     const saved = useCanvasStore.getState().loadStageState(roomId);
     if (!saved) return;
@@ -225,19 +234,10 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
 
     setStagePosition({ x: saved.x, y: saved.y });
     setStageScale(saved.scale);
-  }, [roomId, stageRef, setStagePosition, setStageScale, isConnected]);
+  }, [roomId, stageRef, setStagePosition, setStageScale]);
 
   useEffect(() => {
-    const setup = async () => {
-      await initCanvasStore(ydoc, yObjects, undoManager);
-
-      if (guest) {
-        const room: Permissions = { role: "editor", room: roomId, userId: user?.id!, userEmail: user?.email! };
-        addGuestRoom(room);
-      }
-    };
-
-    setup();
+    initCanvasStore(ydoc, yObjects, undoManager);
   }, [initCanvasStore, ydoc, yObjects, undoManager]);
 
   useEffect(() => {
@@ -293,17 +293,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   }, [yObjects]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const roomName = roomId;
-
-    providerRef.current = new WebsocketProvider(
-      `${wsUrl}/${roomName}/${token}`,
-      "",
-      ydoc,
-      { awareness: docAwareness }
-    );
-
-    awarenessRef.current = providerRef.current.awareness;
+    awarenessRef.current = docAwareness;
 
     awarenessRef.current.setLocalState({
       userId: user?.id,
@@ -338,35 +328,36 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
       updateObjectsFromYjs(changed);
     };
     yObjects.observeDeep(handleObjects);
+    // Show what was loaded from this device
+    updateObjectsFromYjs();
 
-    const handleStatus = ({ status }: { status: string }) => {
-      setIsConnected(status === 'connected');
-    };
+    const unbindLocal = localOwner ? bindLocalCanvas(localOwner, roomId, ydoc, ok => setSaveFailed(!ok)) : undefined;
 
-    const handleSync = (isSynced: boolean) => {
-      if (isSynced) {
-        setIsConnected(true);
-      }
-    };
-
-    providerRef.current.on('status', handleStatus);
-    providerRef.current.on('sync', handleSync);
-
-    if (providerRef.current.wsconnected) {
-      setIsConnected(true);
+    // Accounts sync through the room server; edits made while it's unreachable are kept above
+    // and sent once it's back. Guests stay on this device.
+    let handleStatus: ((event: { status: string }) => void) | undefined;
+    if (!guest) {
+      const token = localStorage.getItem("token");
+      providerRef.current = new WebsocketProvider(`${wsUrl}/${roomId}/${token}`, "", ydoc, { awareness: docAwareness });
+      handleStatus = ({ status }) => setOnline(status === 'connected');
+      providerRef.current.on('status', handleStatus);
+      setOnline(providerRef.current.wsconnected);
     }
+    const grace = setTimeout(() => setConnectGraceOver(true), 2500);
 
     return () => {
+      clearTimeout(grace);
+      unbindLocal?.();
       awareness.off('change', handleAwareness);
       // Tell the others we left (sent before the socket closes), so no cursor is left behind
       awareness.setLocalState(null);
       useCanvasStore.setState({ peers: [] });
       yObjects.unobserveDeep(handleObjects);
-      providerRef.current?.off('status', handleStatus);
-      providerRef.current?.off('sync', handleSync);
+      if (handleStatus) providerRef.current?.off('status', handleStatus);
       providerRef.current?.disconnect();
+      providerRef.current = null;
     };
-  }, [updateObjectsFromYjs, yObjects, docAwareness]);
+  }, [updateObjectsFromYjs, yObjects, docAwareness, ydoc, roomId, guest, localOwner]);
 
   // The objects don't depend on the view, so zooming and panning reuse the same elements
   const renderedObjects = useMemo(() => objects.map((obj) => {
@@ -425,33 +416,6 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     roomId
   });
 
-  if (!isConnected) {
-    return (
-      <div className="m-0 p-0 canvas-stage">
-        <svg
-          className="h-4 w-4 text-white animate-spin"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-          />
-        </svg>
-      </div>
-    )
-  }
-
   return (
     <>
       <Stage className="m-0 p-0 canvas-stage"
@@ -491,6 +455,17 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         </Layer>
       </Stage>
       <RemoteCursors stageRef={stageRef} awareness={awareness} />
+      {(!guest && !online && connectGraceOver) || saveFailed ? (
+        <div
+          role="status"
+          className="fixed top-3 left-1/2 -translate-x-1/2 max-sm:top-16 z-20 island flex items-center gap-2 h-9 px-3 text-xs text-ink-muted pointer-events-none"
+        >
+          <span className={`size-1.5 rounded-full ${saveFailed ? "bg-danger" : "bg-[#f59e0b]"}`} />
+          {saveFailed
+            ? "Storage full: recent changes aren't saved on this device"
+            : "Offline. Changes are saved on this device and sync when you're back."}
+        </div>
+      ) : null}
       {quickMenu && <QuickMenu x={quickMenu.x} y={quickMenu.y} onClose={closeQuickMenu} />}
       <Minimap
         stageRef={stageRef}

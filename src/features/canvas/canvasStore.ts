@@ -39,6 +39,7 @@ interface CanvasActions {
   clear: () => void;
   delete: () => void;
   addGuestRoom: (state: Permissions) => void;
+  removeGuestRoom: (roomId: string) => void;
   saveStageState: (roomId: string, updates: Partial<{ x: number; y: number; scale: number; backgroundColor: string, borderColor: string }>) => void;
   loadStageState: (roomId: string) => { x: number; y: number; scale: number; backgroundColor: string, borderColor: string } | null;
   setToolOptionsOpen: (state: boolean) => void;
@@ -86,7 +87,14 @@ export const useCanvasStore = create<CanvasStore>(
     canDelete: false,
     editing: false,
     editingId: "",
-    guestRooms: [],
+    // A guest's rooms exist only on this device
+    guestRooms: (() => {
+      try {
+        return JSON.parse(localStorage.getItem("guestRooms") || "[]");
+      } catch {
+        return [];
+      }
+    })(),
     stageStates: (() => {
       try {
         return JSON.parse(localStorage.getItem("stageStates") || "{}");
@@ -107,15 +115,6 @@ export const useCanvasStore = create<CanvasStore>(
         });
       }
 
-      const savedGuestRooms = localStorage.getItem("guestRooms");
-      if (savedGuestRooms) {
-        try {
-          const parsedRooms = JSON.parse(savedGuestRooms);
-          set({ guestRooms: parsedRooms });
-        } catch (error) {
-          console.error("Failed to parse guestRooms from localStorage:", error);
-        }
-      }
     },
 
     setTool: (tool) => set({ tool }),
@@ -131,6 +130,12 @@ export const useCanvasStore = create<CanvasStore>(
       if (alreadyExists) return;
 
       const updatedRooms = [...currentRooms, newRoom];
+      set({ guestRooms: updatedRooms });
+      localStorage.setItem("guestRooms", JSON.stringify(updatedRooms));
+    },
+
+    removeGuestRoom: (roomId) => {
+      const updatedRooms = get().guestRooms.filter((room) => room.room !== roomId);
       set({ guestRooms: updatedRooms });
       localStorage.setItem("guestRooms", JSON.stringify(updatedRooms));
     },

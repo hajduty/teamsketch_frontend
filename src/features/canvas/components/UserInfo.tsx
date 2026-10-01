@@ -3,9 +3,11 @@ import { useState } from "react";
 import { Button } from "../../../components/Button";
 import Icon from "../../../components/Icon";
 import { useAuth } from "../../auth/AuthProvider";
+import { useNavigate } from "react-router-dom";
 
 export const UserInfo = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, guest } = useAuth();
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -69,7 +71,12 @@ export const UserInfo = () => {
               </div>
 
               {/* User Details */}
-              {user ? (
+              {guest ? (
+                <p className="text-ink-muted text-sm leading-relaxed">
+                  You're using TeamSketch as a guest. Your canvases are saved on this device only;
+                  log in or create an account to share them.
+                </p>
+              ) : user ? (
                 <div className="flex flex-col gap-3 text-sm">
                   <div className="flex justify-between border-b border-line pb-1">
                     <span className="text-ink-muted">Email</span>
@@ -88,6 +95,22 @@ export const UserInfo = () => {
 
               {/* Logout Button */}
               <div className="mt-4 flex justify-end">
+                {guest ? (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => navigate("/login")}
+                      className="hover:bg-raised text-ink-muted px-3 h-9 rounded-lg transition-colors text-sm cursor-pointer"
+                    >
+                      Log in
+                    </Button>
+                    <Button
+                      onClick={() => navigate("/register")}
+                      className="bg-accent hover:bg-accent-hover text-white px-3 h-9 rounded-lg transition-colors text-sm font-medium cursor-pointer"
+                    >
+                      Create account
+                    </Button>
+                  </div>
+                ) : (
                 <Button
                   onClick={logout}
                   className="bg-danger/12 hover:bg-danger/20 text-danger px-3 h-9 rounded-lg transition-colors duration-100 flex items-center gap-1.5 text-sm font-medium cursor-pointer"
@@ -95,6 +118,7 @@ export const UserInfo = () => {
                   <Icon iconName="logout" color="white" fontSize="16px" />
                   Log out
                 </Button>
+                )}
               </div>
             </div>
           </div>

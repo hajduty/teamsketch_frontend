@@ -20,7 +20,8 @@ apiClient.interceptors.request.use((config) => {
     signalSessionExpired();
     throw new CanceledError('Session expired');
   }
-  if (token && config.headers) {
+  // Guests ('none') have no token to send
+  if (token && token !== 'none' && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
