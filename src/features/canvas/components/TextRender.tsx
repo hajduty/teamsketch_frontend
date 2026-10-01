@@ -107,7 +107,7 @@ export const TextRender: React.FC<TextToolProps> = React.memo(({
         fill={obj.color || toolOptions.current.color}
         width={obj.width || 200}
         rotation={obj.rotation || 0}
-        draggable={!editing && obj.selected}
+        draggable={!editing && obj.selected && (activeTool === "select" || activeTool === "text")}
         onDragMove={handleDragMove}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
@@ -131,7 +131,7 @@ export const TextRender: React.FC<TextToolProps> = React.memo(({
         />
       )}
 
-      {obj.selected && !editing && (
+      {obj.selected && !editing && (activeTool === "select" || activeTool === "text") && (
         <Transformer
           id={obj.id}
           ref={transformerRef}

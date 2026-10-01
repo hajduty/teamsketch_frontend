@@ -72,7 +72,8 @@ const AssetRender: FC<AssetRenderProps> = ({ obj, yObjects, updateObjectsFromYjs
   };
 
   const label = labelBox(def, width, height);
-  const editable = !!obj.selected && !editing;
+  // Only the select tool moves or resizes; with the pen, a drag must only draw
+  const editable = !!obj.selected && activeTool === "select" && !editing;
 
   return (
     <>

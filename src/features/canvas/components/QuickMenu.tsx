@@ -173,7 +173,7 @@ export const QuickMenu: FC<QuickMenuProps> = ({ x, y, point, targetId, onClose }
             key={t.name}
             type="button"
             aria-pressed={tool === t.name}
-            onClick={() => useCanvasStore.setState({ tool: t.name, optionsPanel: "tool" })}
+            onClick={() => { useCanvasStore.getState().setTool(t.name); useCanvasStore.setState({ optionsPanel: "tool" }); }}
             className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-lg cursor-pointer transition-colors text-xs
               ${tool === t.name ? "bg-accent-soft text-[#8fb0ff]" : "text-ink-muted hover:bg-raised hover:text-ink"}`}
           >

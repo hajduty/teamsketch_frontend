@@ -109,6 +109,19 @@ let ydoc: Y.Doc | null = null;
 let yObjects: Y.Map<any> | null = null;
 let undoManager: Y.UndoManager | null = null;
 
+/**
+ * Deselect everything, e.g. when switching tools: a selection left behind stays draggable and
+ * a pen stroke over it would move it too. Not an undoable change (undo tracks only
+ * transactions without an origin).
+ */
+const clearSelection = (set: (state: Partial<CanvasStore>) => void) => {
+  if (!yObjects || !ydoc) return;
+  const map = yObjects;
+  Y.transact(ydoc, () => {
+    map.forEach(obj => { if (obj instanceof Y.Map && obj.get('selected')) obj.set('selected', false); });
+  }, 'selection');
+  set({ canDelete: false });
+};
 
 export const useCanvasStore = create<CanvasStore>(
   ((set, get) => ({
@@ -174,7 +187,10 @@ export const useCanvasStore = create<CanvasStore>(
 
     },
 
-    setTool: (tool) => set({ tool }),
+    setTool: (tool) => {
+      if (tool !== get().tool) clearSelection(set);
+      set({ tool });
+    },
 
     setOption: (key, value) => set((state) => ({
       options: { ...state.options, [key]: value },
@@ -331,6 +347,7 @@ export const useCanvasStore = create<CanvasStore>(
       if (tool === current && optionsPanel === 'tool') {
         set({ toolOptionsOpen: !toolOptionsOpen });
       } else {
+        if (tool !== current) clearSelection(set);
         set({ tool, optionsPanel: 'tool', toolOptionsOpen: true });
       }
     },

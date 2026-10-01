@@ -147,7 +147,8 @@ function CanvasPage({ roomId }: { roomId: string }) {
     if (action === "next" || action === "start") {
       switch (index) {
         case 1:
-          useCanvasStore.setState({ tool: "pen", optionsPanel: "tool", toolOptionsOpen: true });
+          useCanvasStore.getState().setTool("pen");
+          useCanvasStore.setState({ optionsPanel: "tool", toolOptionsOpen: true });
           break;
         case 3:
           useCanvasStore.getState().setRoomListOpen(true);
