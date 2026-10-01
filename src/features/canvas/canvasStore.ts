@@ -38,7 +38,8 @@ interface CanvasState {
   toolbarOpen: boolean;
   roomListOpen: boolean;
   canDelete: boolean;
-  // Category of the library shape added last
+  // Category of the library shape added or changed last, for "similar shapes" in the
+  // right-click menu
   recentCategory: string;
   libraryOpen: boolean;
   // Saved library items of whoever is signed in (or the guest)
@@ -78,6 +79,8 @@ interface CanvasActions {
   insertObjects: (objects: CanvasObject[], select?: boolean) => void;
   updateObject: (id: string, props: Partial<CanvasObject>) => void;
   selectedObjects: () => CanvasObject[];
+  /** Shape type of a placed library shape */
+  objectAssetId: (id: string) => string | undefined;
 }
 
 type CanvasStore = CanvasState & CanvasActions;
@@ -265,6 +268,11 @@ export const useCanvasStore = create<CanvasStore>(
           else yObj.set(key, value);
         }
       });
+    },
+
+    objectAssetId: (id) => {
+      const yObj = yObjects?.get(id);
+      return yObj instanceof Y.Map ? yObj.get('assetId') : undefined;
     },
 
     selectedObjects: () => {

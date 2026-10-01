@@ -14,8 +14,10 @@ import { RemoteCursors } from "./components/RemoteCursors";
 import { colorFor, readPeers } from "./presence";
 import { bindLocalCanvas, GUEST_OWNER, loadLocalCanvas } from "./localCanvas";
 import { SelectTool } from "./tools/selectTool";
+import { assetNodeAt } from "./objectGeometry";
 import AssetRender from "./components/AssetRender";
 import { DRAG_TYPE, insertFromLibrary, LibraryPayload } from "./assets/insert";
+import { getTransformedPointer } from "../../utils/utils";
 import InfiniteGrid from "./components/InfiniteGrid";
 import { Minimap } from "./components/Minimap";
 import { QuickMenu } from "./components/QuickMenu";
@@ -149,7 +151,8 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const setCanDelete = useCanvasStore(state => state.setCanDelete);
 
   // Right-click quick settings menu
-  const [quickMenu, setQuickMenu] = useState<{ x: number; y: number } | null>(null);
+  // Where it was opened (screen), the canvas point under it, and the shape it was opened on
+  const [quickMenu, setQuickMenu] = useState<{ x: number; y: number; point: { x: number; y: number } | null; targetId?: string } | null>(null);
   const closeQuickMenu = useCallback(() => setQuickMenu(null), []);
 
   // Zoom around the centre of the screen, for the zoom buttons
@@ -492,7 +495,12 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         onContextMenu={(e) => {
           e.evt.preventDefault();
           if (isToolsDisabled || isSpacePressed) return;
-          setQuickMenu({ x: e.evt.clientX, y: e.evt.clientY });
+          setQuickMenu({
+            x: e.evt.clientX,
+            y: e.evt.clientY,
+            point: getTransformedPointer(e.target.getStage()!),
+            targetId: assetNodeAt(e.target)?.attrs.id,
+          });
         }}
         onDblClick={(e) => {
           if (!isSpacePressed && !isToolsDisabled && (isDoubleClick() && handleClick)) {
@@ -517,7 +525,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
             : "Offline. Changes are saved on this device and sync when you're back."}
         </div>
       ) : null}
-      {quickMenu && <QuickMenu x={quickMenu.x} y={quickMenu.y} onClose={closeQuickMenu} />}
+      {quickMenu && <QuickMenu x={quickMenu.x} y={quickMenu.y} point={quickMenu.point} targetId={quickMenu.targetId} onClose={closeQuickMenu} />}
       <Minimap
         stageRef={stageRef}
         objects={objects}
