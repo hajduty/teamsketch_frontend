@@ -12,6 +12,7 @@ import PenRender from "./components/PenRender";
 import { useIsDoubleClick } from "../../hooks/useIsDoubleClick";
 import { RemoteCursors } from "./components/RemoteCursors";
 import { colorFor, readPeers } from "./presence";
+import { bindLocalCanvas, loadLocalCanvas } from "./localCanvas";
 import { SelectTool } from "./tools/selectTool";
 import InfiniteGrid from "./components/InfiniteGrid";
 import { Minimap } from "./components/Minimap";
@@ -98,10 +99,18 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const [isDrawing, setIsDrawing] = useState(false);
   const currentState = useRef<any>({});
 
+  // This device's copy of the room
+  const localOwner = user?.id;
+
   // Yjs setup
   // Lazy initialisers: useRef(new ...) would build a new doc/undo manager on every render,
-  // and each undo manager stays subscribed to the doc
-  const [ydoc] = useState(() => new Y.Doc());
+  // and each undo manager stays subscribed to the doc. The saved copy is loaded first, so
+  // loading it isn't an undoable change.
+  const [ydoc] = useState(() => {
+    const doc = new Y.Doc();
+    if (localOwner) loadLocalCanvas(localOwner, roomId, doc);
+    return doc;
+  });
   const [yObjects] = useState(() => ydoc.getMap<any>("objects"));
   // One awareness for the doc's lifetime, shared by every provider. A new one per provider
   // (e.g. after a hot reload) restarts its clock under the same client id, and everyone
@@ -111,6 +120,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const awarenessRef = useRef<any>(null);
   // Set once connected, for the cursor overlay
   const [awareness, setAwareness] = useState<any>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
 
   const [undoManager] = useState(() => new Y.UndoManager(yObjects, {
     captureTimeout: 200,
@@ -338,6 +348,10 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
       updateObjectsFromYjs(changed);
     };
     yObjects.observeDeep(handleObjects);
+    // Show what was loaded from this device
+    updateObjectsFromYjs();
+
+    const unbindLocal = localOwner ? bindLocalCanvas(localOwner, roomId, ydoc, ok => setSaveFailed(!ok)) : undefined;
 
     const handleStatus = ({ status }: { status: string }) => {
       setIsConnected(status === 'connected');
@@ -357,6 +371,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     }
 
     return () => {
+      unbindLocal?.();
       awareness.off('change', handleAwareness);
       // Tell the others we left (sent before the socket closes), so no cursor is left behind
       awareness.setLocalState(null);
@@ -366,7 +381,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
       providerRef.current?.off('sync', handleSync);
       providerRef.current?.disconnect();
     };
-  }, [updateObjectsFromYjs, yObjects, docAwareness]);
+  }, [updateObjectsFromYjs, yObjects, docAwareness, ydoc, roomId, localOwner]);
 
   // The objects don't depend on the view, so zooming and panning reuse the same elements
   const renderedObjects = useMemo(() => objects.map((obj) => {
@@ -491,6 +506,15 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         </Layer>
       </Stage>
       <RemoteCursors stageRef={stageRef} awareness={awareness} />
+      {saveFailed && (
+        <div
+          role="status"
+          className="fixed top-3 left-1/2 -translate-x-1/2 max-sm:top-16 z-20 island flex items-center gap-2 h-9 px-3 text-xs text-ink-muted pointer-events-none"
+        >
+          <span className="size-1.5 rounded-full bg-danger" />
+          Storage full: recent changes aren't saved on this device
+        </div>
+      )}
       {quickMenu && <QuickMenu x={quickMenu.x} y={quickMenu.y} onClose={closeQuickMenu} />}
       <Minimap
         stageRef={stageRef}

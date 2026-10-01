@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { User } from '../../types/user';
 import { isTokenExpired, msUntilExpiry, onSessionExpired } from './session';
+import { clearLocalCanvases } from '../canvas/localCanvas';
 
 interface AuthContextType {
     authenticated: boolean;
@@ -73,7 +74,8 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
         setToken(token);
     };
 
-    const logout = useCallback(() => {
+    // Ends the session but keeps this device's copies of the rooms
+    const endSession = useCallback(() => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setGuest(false);
@@ -82,10 +84,23 @@ export const AuthProvider: React.FC<Props> = ({ children }) => {
         setToken("");
     }, []);
 
+    // Logging out also removes the account's rooms from this device
+    const logout = useCallback(() => {
+        try {
+            const id = JSON.parse(localStorage.getItem('user') || 'null')?.id;
+            if (id) clearLocalCanvases(id);
+        } catch {
+            // No readable user, nothing to clear
+        }
+        endSession();
+    }, [endSession]);
+
+    // An expired session keeps the cached rooms, so changes made offline can still sync after
+    // logging back in
     const expire = useCallback(() => {
         setSessionExpired(true);
-        logout();
-    }, [logout]);
+        endSession();
+    }, [endSession]);
 
     // Log out when the token expires. Timers don't run reliably in background or sleeping
     // tabs, so also check whenever the tab comes back.

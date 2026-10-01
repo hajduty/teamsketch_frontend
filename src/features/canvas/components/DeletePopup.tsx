@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import apiClient from "../../../lib/apiClient";
 import { apiRoutes } from "../../../lib/apiRoutes";
 import { Permissions } from "../../../types/permission";
+import { removeLocalCanvas } from "../localCanvas";
 
 interface DeletePopupProps {
   isOpen: boolean;
@@ -50,6 +51,7 @@ export const DeletePopup = ({
 
     try {
       await apiClient.delete(apiRoutes.permission.remove(room.room, user.id));
+      removeLocalCanvas(user.id, room.room);
     } catch (error) {
       console.error('Error deleting room:', error);
     } finally {
