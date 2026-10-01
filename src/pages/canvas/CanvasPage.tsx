@@ -30,7 +30,7 @@ const lastRoomKey = (userId: string) => `lastRoom:${userId}`;
 export const CanvasWrapper = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, guest } = useAuth();
 
   const createNewRoom = async (): Promise<string | undefined> => {
     try {
@@ -52,6 +52,13 @@ export const CanvasWrapper = () => {
 
   useEffect(() => {
     const ensureRoomExists = async () => {
+      if (!roomId && location.pathname === "/" && user?.id && guest) {
+        // Guests: their latest canvas on this device, or a new one
+        const rooms = useCanvasStore.getState().guestRooms;
+        const latest = rooms.slice().sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())[0];
+        navigate(`/${latest?.room ?? generateRoomId()}`, { replace: true });
+        return;
+      }
       if (!roomId && location.pathname === "/" && user?.id) {
         try {
           const response = await apiClient.get(apiRoutes.permission.getMyRooms(user.id));
@@ -75,7 +82,7 @@ export const CanvasWrapper = () => {
     };
 
     ensureRoomExists();
-  }, [roomId, location.pathname, navigate, user?.id]);
+  }, [roomId, location.pathname, navigate, user?.id, guest]);
 
   if (!roomId) {
     return (
@@ -88,7 +95,7 @@ export const CanvasWrapper = () => {
 
 
 function CanvasPage({ roomId }: { roomId: string }) {
-  const { user } = useAuth();
+  const { user, guest } = useAuth();
   const [permission, setPermission] = useState<Permissions>();
   const { connection } = useSignalR();
   const [loading, setLoading] = useState(true);
@@ -154,6 +161,19 @@ function CanvasPage({ roomId }: { roomId: string }) {
   useEffect(() => {
     let isMounted = true;
 
+    // Guests own every canvas they open: it exists only on this device
+    if (guest && user) {
+      const store = useCanvasStore.getState();
+      let room = store.guestRooms.find(r => r.room === roomId);
+      if (!room) {
+        room = { role: "Owner", room: roomId, userId: user.id, userEmail: user.email, createdAt: new Date() };
+        store.addGuestRoom(room);
+      }
+      setPermission(room);
+      setLoading(false);
+      return;
+    }
+
     // If the server is unreachable, open the room with the access we had last time
     const cached = user?.id ? loadRoomPermission(user.id, roomId) : null;
     const fallback = cached
@@ -201,7 +221,7 @@ function CanvasPage({ roomId }: { roomId: string }) {
       isMounted = false;
       clearTimeout(fallback);
     };
-  }, [roomId, connection, user]);
+  }, [roomId, connection, guest, user]);
 
   if (!roomId) return null;
 

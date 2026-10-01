@@ -63,7 +63,8 @@ const relativeTime = (date?: Date | string) => {
 const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
   const navigate = useNavigate();
   const { guest, user } = useAuth();
-  const { guestRooms } = useCanvasStore();
+  const guestRooms = useCanvasStore(state => state.guestRooms);
+  const addGuestRoom = useCanvasStore(state => state.addGuestRoom);
   const { connection } = useSignalR();
   const isMobile = useIsMobile();
   const compact = useIsCompact();
@@ -97,8 +98,13 @@ const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
     }
   }, [guest, guestRooms, connection]);
 
+  // A guest's rooms are the ones on this device
   useEffect(() => {
-    if (!connection || handlersRegistered.current) return;
+    if (guest) setRooms(guestRooms);
+  }, [guest, guestRooms]);
+
+  useEffect(() => {
+    if (guest || !connection || handlersRegistered.current) return;
 
     fetchRooms();
 
@@ -149,7 +155,7 @@ const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
       connection.off("PermissionAdded", handlePermissionAdded);
       handlersRegistered.current = false;
     };
-  }, [connection, fetchRooms, user?.id, user?.email]);
+  }, [guest, connection, fetchRooms, user?.id, user?.email]);
 
   // Close on outside click / Escape
   useEffect(() => {
@@ -169,6 +175,11 @@ const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
   }, [open, setOpen]);
 
   const createNewRoom = useCallback(async () => {
+    if (guest) {
+      const room = generateRoomId();
+      addGuestRoom({ role: "Owner", room, userId: user?.id ?? "", userEmail: user?.email ?? "", createdAt: new Date() });
+      return room;
+    }
     setCreating(true);
     try {
       const uuid = generateRoomId();
@@ -190,7 +201,7 @@ const CanvasListComponent: FC<{ roomId: string }> = ({ roomId }) => {
     } finally {
       setCreating(false);
     }
-  }, [user?.id, user?.email]);
+  }, [guest, addGuestRoom, user?.id, user?.email]);
 
   const handleDeletePopup = useCallback(
     (room: Permissions) => {

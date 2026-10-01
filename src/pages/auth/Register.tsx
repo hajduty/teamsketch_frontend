@@ -8,7 +8,7 @@ import { apiRoutes } from '../../lib/apiRoutes';
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { authenticated, login } = useAuth();
+  const { authenticated, guest, login } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,8 +16,9 @@ const Register: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (authenticated) navigate('/');
-  }, [authenticated, navigate]);
+    // A guest can come here to make an account, so only an account is sent on
+    if (authenticated && !guest) navigate('/');
+  }, [authenticated, guest, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

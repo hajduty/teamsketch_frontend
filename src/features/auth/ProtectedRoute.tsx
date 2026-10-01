@@ -19,14 +19,15 @@ const PERMISSION_URL = import.meta.env.VITE_API_PERMISSION_URL || "https://local
 export const useSignalR = () => useContext(SignalRContext);
 
 const ProtectedRoute: React.FC = () => {
-  const { authenticated, loading, token } = useAuth();
+  const { authenticated, loading, token, guest } = useAuth();
   const location = useLocation();
 
   const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (!authenticated || !token) return;
+    // Guests work only on this device, without the permissions hub
+    if (!authenticated || !token || guest) return;
 
     if (connection) return; // prevent multiple starts in dev/strict mode
 
@@ -57,7 +58,7 @@ const ProtectedRoute: React.FC = () => {
       setIsConnected(false);
       console.log("SignalR disconnected");
     };
-  }, [authenticated, token]);
+  }, [authenticated, token, guest]);
 
   if (loading) return <div>Loading...</div>;
 

@@ -8,7 +8,7 @@ import { apiRoutes } from '../../lib/apiRoutes';
 const SignIn: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { authenticated, login, sessionExpired } = useAuth();
+  const { authenticated, guest, login, continueAsGuest, sessionExpired } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,8 +16,9 @@ const SignIn: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (authenticated) navigate('/');
-  }, [authenticated, navigate]);
+    // A guest can come here to log in, so only an account is sent on
+    if (authenticated && !guest) navigate('/');
+  }, [authenticated, guest, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,10 +149,26 @@ const SignIn: React.FC = () => {
               )}
             </button>
 
-            <div className="my-6 flex items-center justify-center">
+            <div className="my-6 flex items-center gap-3 text-xs text-neutral-500">
               <div className="h-px w-full bg-neutral-700"></div>
+              or
               <div className="h-px w-full bg-neutral-700"></div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                continueAsGuest();
+                navigate('/', { replace: true });
+              }}
+              disabled={isLoading}
+              className="mb-2 w-full rounded cursor-pointer border border-neutral-700 px-4 py-2.5 font-medium text-neutral-200 transition-colors hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Continue as guest
+            </button>
+            <p className="mb-6 text-center text-xs text-neutral-500">
+              No account needed. Your canvases are saved on this device.
+            </p>
 
             <div className="text-center text-sm text-neutral-300">
               Don't have an account?{' '}

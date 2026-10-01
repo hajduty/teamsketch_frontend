@@ -5,7 +5,8 @@ import { useAuth } from "../../auth/AuthProvider";
 import apiClient from "../../../lib/apiClient";
 import { apiRoutes } from "../../../lib/apiRoutes";
 import { Permissions } from "../../../types/permission";
-import { removeLocalCanvas } from "../localCanvas";
+import { useCanvasStore } from "../canvasStore";
+import { GUEST_OWNER, removeLocalCanvas } from "../localCanvas";
 
 interface DeletePopupProps {
   isOpen: boolean;
@@ -18,7 +19,7 @@ export const DeletePopup = ({
   onClose,
   room
 }: DeletePopupProps) => {
-  const { user } = useAuth();
+  const { user, guest } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -48,6 +49,15 @@ export const DeletePopup = ({
     }
 
     setIsDeleting(true);
+
+    // A guest's room exists only on this device
+    if (guest) {
+      useCanvasStore.getState().removeGuestRoom(room.room);
+      removeLocalCanvas(GUEST_OWNER, room.room);
+      setIsDeleting(false);
+      handleClose();
+      return;
+    }
 
     try {
       await apiClient.delete(apiRoutes.permission.remove(room.room, user.id));

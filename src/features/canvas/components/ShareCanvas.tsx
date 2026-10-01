@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { Select, SelectOption } from "../../../components/Select";
 
 const ROLE_OPTIONS: SelectOption<string>[] = [
@@ -15,22 +16,13 @@ import { useSignalR } from "../../auth/ProtectedRoute";
 import { Permissions } from "../../../types/permission";
 
 const GuestView = ({
-  roomId,
   onClose,
   isVisible,
 }: {
-  roomId: string;
   onClose: () => void;
   isVisible: boolean;
 }) => {
-  const [copied, setCopied] = useState(false);
-
-  const copyToClipboard = () => {
-    const link = `${window.location.origin}/${roomId}`;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-  };
-
+  const navigate = useNavigate();
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
@@ -56,24 +48,26 @@ const GuestView = ({
 
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 bg-accent-soft rounded-full flex items-center justify-center flex-shrink-0">
-            <Icon iconName="share" color="#3b82f6" fontSize="18px" />
+            <Icon iconName="devices" color="#3b82f6" fontSize="18px" />
           </div>
           <p className="text-ink text-sm leading-relaxed">
-            This canvas is public! Just copy this link to share it with anyone.
+            As a guest, your canvases are saved on this device only. Create an account to share
+            rooms and draw together.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <input
-            readOnly
-            className="bg-canvas text-ink px-3 h-9 border border-line-strong flex-1 rounded-md text-sm outline-none focus:border-accent"
-            value={`${window.location.origin}/${roomId}`}
-          />
+        <div className="flex justify-end gap-2">
           <Button
-            onClick={copyToClipboard}
-            className="bg-raised hover:bg-raised text-sm px-3 py-2 rounded-md transition-colors"
+            onClick={() => navigate("/login")}
+            className="hover:bg-raised text-sm px-3 h-9 rounded-md transition-colors text-ink-muted"
           >
-            {copied ? "Copied!" : "Copy"}
+            Log in
+          </Button>
+          <Button
+            onClick={() => navigate("/register")}
+            className="bg-accent hover:bg-accent-hover text-white text-sm font-medium px-3 h-9 rounded-md transition-colors"
+          >
+            Create account
           </Button>
         </div>
       </div>
@@ -206,7 +200,6 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
             } z-40`}
           />
           <GuestView
-            roomId={roomId}
             onClose={closeModal}
             isVisible={isVisible}
           />
