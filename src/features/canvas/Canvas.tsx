@@ -99,13 +99,13 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const [isDrawing, setIsDrawing] = useState(false);
   const currentState = useRef<any>({});
 
-  // This device's copy of the room
+  // This device's copy of the room: an offline cache
   const localOwner = user?.id;
 
   // Yjs setup
   // Lazy initialisers: useRef(new ...) would build a new doc/undo manager on every render,
-  // and each undo manager stays subscribed to the doc. The saved copy is loaded first, so
-  // loading it isn't an undoable change.
+  // and each undo manager stays subscribed to the doc. The saved copy is loaded first, so the
+  // canvas shows straight away (and offline) and loading it isn't an undoable change.
   const [ydoc] = useState(() => {
     const doc = new Y.Doc();
     if (localOwner) loadLocalCanvas(localOwner, roomId, doc);
@@ -118,8 +118,12 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const [docAwareness] = useState(() => new Awareness(ydoc));
   const providerRef = useRef<WebsocketProvider | null>(null);
   const awarenessRef = useRef<any>(null);
-  // Set once connected, for the cursor overlay
+  // Set once set up, for the cursor overlay
   const [awareness, setAwareness] = useState<any>(null);
+  // Whether the room server is reachable
+  const [online, setOnline] = useState(false);
+  // Don't flash "offline" while the first connection is still being made
+  const [connectGraceOver, setConnectGraceOver] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
 
   const [undoManager] = useState(() => new Y.UndoManager(yObjects, {
@@ -220,12 +224,9 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     return () => clearTimeout(timer);
   }, [awareness, stagePosition, stageScale, width, height]);
 
-  const [isConnected, setIsConnected] = useState(false);
-
+  // Restore this room's saved view
   useEffect(() => {
     if (!roomId || !stageRef.current) return;
-
-    if (!isConnected) return;
 
     const saved = useCanvasStore.getState().loadStageState(roomId);
     if (!saved) return;
@@ -235,7 +236,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
 
     setStagePosition({ x: saved.x, y: saved.y });
     setStageScale(saved.scale);
-  }, [roomId, stageRef, setStagePosition, setStageScale, isConnected]);
+  }, [roomId, stageRef, setStagePosition, setStageScale]);
 
   useEffect(() => {
     const setup = async () => {
@@ -303,17 +304,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   }, [yObjects]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const roomName = roomId;
-
-    providerRef.current = new WebsocketProvider(
-      `${wsUrl}/${roomName}/${token}`,
-      "",
-      ydoc,
-      { awareness: docAwareness }
-    );
-
-    awarenessRef.current = providerRef.current.awareness;
+    awarenessRef.current = docAwareness;
 
     awarenessRef.current.setLocalState({
       userId: user?.id,
@@ -353,24 +344,17 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
 
     const unbindLocal = localOwner ? bindLocalCanvas(localOwner, roomId, ydoc, ok => setSaveFailed(!ok)) : undefined;
 
-    const handleStatus = ({ status }: { status: string }) => {
-      setIsConnected(status === 'connected');
-    };
-
-    const handleSync = (isSynced: boolean) => {
-      if (isSynced) {
-        setIsConnected(true);
-      }
-    };
-
+    // Changes sync through the room server; edits made while it's unreachable are kept above
+    // and sent once it's back
+    const token = localStorage.getItem("token");
+    providerRef.current = new WebsocketProvider(`${wsUrl}/${roomId}/${token}`, "", ydoc, { awareness: docAwareness });
+    const handleStatus = ({ status }: { status: string }) => setOnline(status === 'connected');
     providerRef.current.on('status', handleStatus);
-    providerRef.current.on('sync', handleSync);
-
-    if (providerRef.current.wsconnected) {
-      setIsConnected(true);
-    }
+    setOnline(providerRef.current.wsconnected);
+    const grace = setTimeout(() => setConnectGraceOver(true), 2500);
 
     return () => {
+      clearTimeout(grace);
       unbindLocal?.();
       awareness.off('change', handleAwareness);
       // Tell the others we left (sent before the socket closes), so no cursor is left behind
@@ -378,8 +362,8 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
       useCanvasStore.setState({ peers: [] });
       yObjects.unobserveDeep(handleObjects);
       providerRef.current?.off('status', handleStatus);
-      providerRef.current?.off('sync', handleSync);
       providerRef.current?.disconnect();
+      providerRef.current = null;
     };
   }, [updateObjectsFromYjs, yObjects, docAwareness, ydoc, roomId, localOwner]);
 
@@ -440,33 +424,6 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     roomId
   });
 
-  if (!isConnected) {
-    return (
-      <div className="m-0 p-0 canvas-stage">
-        <svg
-          className="h-4 w-4 text-white animate-spin"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-          />
-        </svg>
-      </div>
-    )
-  }
-
   return (
     <>
       <Stage className="m-0 p-0 canvas-stage"
@@ -506,15 +463,17 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         </Layer>
       </Stage>
       <RemoteCursors stageRef={stageRef} awareness={awareness} />
-      {saveFailed && (
+      {(!online && connectGraceOver) || saveFailed ? (
         <div
           role="status"
           className="fixed top-3 left-1/2 -translate-x-1/2 max-sm:top-16 z-20 island flex items-center gap-2 h-9 px-3 text-xs text-ink-muted pointer-events-none"
         >
-          <span className="size-1.5 rounded-full bg-danger" />
-          Storage full: recent changes aren't saved on this device
+          <span className={`size-1.5 rounded-full ${saveFailed ? "bg-danger" : "bg-[#f59e0b]"}`} />
+          {saveFailed
+            ? "Storage full: recent changes aren't saved on this device"
+            : "Offline. Changes are saved on this device and sync when you're back."}
         </div>
-      )}
+      ) : null}
       {quickMenu && <QuickMenu x={quickMenu.x} y={quickMenu.y} onClose={closeQuickMenu} />}
       <Minimap
         stageRef={stageRef}

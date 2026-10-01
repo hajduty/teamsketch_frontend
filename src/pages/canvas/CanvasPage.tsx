@@ -21,11 +21,16 @@ import { apiRoutes } from "../../lib/apiRoutes";
 import { generateRoomId } from "../../utils/utils";
 import { RoomNotFound } from "./RoomNotFound";
 import { ErrorPage } from "../ErrorPage";
+import { loadRoomPermission, saveRoomPermission } from "../../features/canvas/localCanvas";
+
+// How long to wait for the server before opening a room with the access remembered from last time
+const OFFLINE_FALLBACK_MS = 3000;
+const lastRoomKey = (userId: string) => `lastRoom:${userId}`;
 
 export const CanvasWrapper = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const {user} = useAuth();
+  const { user } = useAuth();
 
   const createNewRoom = async (): Promise<string | undefined> => {
     try {
@@ -62,6 +67,9 @@ export const CanvasWrapper = () => {
           }
         } catch (error) {
           console.error("Failed to fetch user rooms:", error);
+          // Offline: reopen the last room
+          const last = localStorage.getItem(lastRoomKey(user.id));
+          if (last) navigate(`/${last}`, { replace: true });
         }
       }
     };
@@ -80,6 +88,7 @@ export const CanvasWrapper = () => {
 
 
 function CanvasPage({ roomId }: { roomId: string }) {
+  const { user } = useAuth();
   const [permission, setPermission] = useState<Permissions>();
   const { connection } = useSignalR();
   const [loading, setLoading] = useState(true);
@@ -145,6 +154,16 @@ function CanvasPage({ roomId }: { roomId: string }) {
   useEffect(() => {
     let isMounted = true;
 
+    // If the server is unreachable, open the room with the access we had last time
+    const cached = user?.id ? loadRoomPermission(user.id, roomId) : null;
+    const fallback = cached
+      ? setTimeout(() => {
+        if (!isMounted) return;
+        setPermission(current => current ?? cached);
+        setLoading(false);
+      }, OFFLINE_FALLBACK_MS)
+      : undefined;
+
     const loadPermissions = async () => {
       while (isMounted && (!roomId || !connection)) {
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -159,8 +178,13 @@ function CanvasPage({ roomId }: { roomId: string }) {
 
       try {
         const roomPerm = await connection.invoke<Permissions>("GetPermission", roomId);
+        clearTimeout(fallback);
         if (isMounted && roomPerm) {
           setPermission(roomPerm);
+          if (user?.id) {
+            saveRoomPermission(user.id, roomPerm);
+            localStorage.setItem(lastRoomKey(user.id), roomId);
+          }
         } else {
           setPermission(null!);
         }
@@ -175,8 +199,9 @@ function CanvasPage({ roomId }: { roomId: string }) {
 
     return () => {
       isMounted = false;
+      clearTimeout(fallback);
     };
-  }, [roomId, connection]);
+  }, [roomId, connection, user]);
 
   if (!roomId) return null;
 
