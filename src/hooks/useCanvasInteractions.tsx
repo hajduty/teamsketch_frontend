@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import throttle from "lodash/throttle";
 import Konva from "konva";
-import { getTransformedPointer } from "../utils/utils";
 import { useCanvasStore } from "../features/canvas/canvasStore";
 
 interface UseCanvasInteractionsProps {
@@ -51,10 +50,20 @@ export function useCanvasInteractions({
     return () => debouncedSetCursor.cancel();
   }, [debouncedSetCursor]);
 
-  // Hide our cursor from others while the pointer is off the canvas (over the UI or outside the window)
-  // (listens on the document: the stage only mounts once the room has connected)
+  // Share our cursor while the pointer is over the canvas, and hide it while it's off (over
+  // the UI or outside the window). Uses the browser's pointer events rather than Konva's:
+  // Konva sends no mousemove while an object is being dragged, which froze the cursor.
   useEffect(() => {
     let onCanvas = false;
+    const onMove = (e: PointerEvent) => {
+      const stage = stageRef.current;
+      const container = stage?.container();
+      if (!stage || !container?.contains(e.target as Node) || isToolsDisabled) return;
+      onCanvas = true;
+      const box = container.getBoundingClientRect();
+      const point = stage.getAbsoluteTransform().copy().invert().point({ x: e.clientX - box.left, y: e.clientY - box.top });
+      debouncedSetCursor(point.x, point.y);
+    };
     const leave = () => {
       if (!onCanvas) return;
       onCanvas = false;
@@ -69,29 +78,23 @@ export function useCanvasInteractions({
     const onOut = (e: PointerEvent) => {
       if (!e.relatedTarget) leave(); // left the window
     };
+    document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerover", onOver);
     document.addEventListener("pointerout", onOut);
     window.addEventListener("blur", leave);
     return () => {
+      document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerover", onOver);
       document.removeEventListener("pointerout", onOut);
       window.removeEventListener("blur", leave);
     };
-  }, [stageRef, providerRef, debouncedSetCursor]);
+  }, [stageRef, providerRef, debouncedSetCursor, isToolsDisabled]);
 
-  // Wrapped mouse move handler that updates awareness cursor
+  // Mouse move for the active tool (the cursor itself is shared above)
   const wrappedHandleMouseMove = useCallback((e: any) => {
     if (isToolsDisabled) return;
     handleMouseMove?.(e);
-
-    const stage = stageRef.current;
-    if (!stage || !providerRef.current) return;
-
-    const pointerPos = getTransformedPointer(stage);
-    if (!pointerPos) return;
-
-    debouncedSetCursor(pointerPos.x, pointerPos.y);
-  }, [isToolsDisabled, handleMouseMove, stageRef, providerRef, debouncedSetCursor]);
+  }, [isToolsDisabled, handleMouseMove]);
 
   // Hand cursor while panning: "grab" with Space held, "grabbing" while dragging
   const spaceHeldRef = useRef(false);
