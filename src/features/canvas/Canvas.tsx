@@ -14,6 +14,7 @@ import { RemoteCursors } from "./components/RemoteCursors";
 import { colorFor, readPeers } from "./presence";
 import { bindLocalCanvas, GUEST_OWNER, loadLocalCanvas } from "./localCanvas";
 import { SelectTool } from "./tools/selectTool";
+import AssetRender from "./components/AssetRender";
 import InfiniteGrid from "./components/InfiniteGrid";
 import { Minimap } from "./components/Minimap";
 import { QuickMenu } from "./components/QuickMenu";
@@ -82,6 +83,7 @@ const TOOLS: Record<string, Tool> = {
 const TOOLS_COMPONENTS: Record<string, FC<any>> = {
   path: PenRender,
   text: TextRender,
+  asset: AssetRender,
 };
 
 export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, role }) => {
