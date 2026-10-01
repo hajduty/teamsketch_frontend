@@ -8,11 +8,11 @@ import { apiRoutes } from '../../lib/apiRoutes';
 const SignIn: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { authenticated, login } = useAuth();
+  const { authenticated, login, sessionExpired } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(sessionExpired ? 'Your session expired. Please log in again.' : '');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
