@@ -15,6 +15,7 @@ import { colorFor, readPeers } from "./presence";
 import { bindLocalCanvas, GUEST_OWNER, loadLocalCanvas } from "./localCanvas";
 import { SelectTool } from "./tools/selectTool";
 import AssetRender from "./components/AssetRender";
+import { DRAG_TYPE, insertFromLibrary, LibraryPayload } from "./assets/insert";
 import InfiniteGrid from "./components/InfiniteGrid";
 import { Minimap } from "./components/Minimap";
 import { QuickMenu } from "./components/QuickMenu";
@@ -77,7 +78,7 @@ const sameObject = (a: CanvasObject, b: CanvasObject) => {
 const TOOLS: Record<string, Tool> = {
   pen: PenTool,
   text: TextTool,
-  select: SelectTool
+  select: SelectTool,
 };
 
 const TOOLS_COMPONENTS: Record<string, FC<any>> = {
@@ -200,6 +201,17 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         zoomIn: () => zoomTo((stageRef.current?.scaleX() ?? 1) * 1.25),
         zoomOut: () => zoomTo((stageRef.current?.scaleX() ?? 1) / 1.25),
         resetZoom: () => zoomTo(1),
+        center: () => {
+          const stage = stageRef.current;
+          if (!stage) return { x: 0, y: 0 };
+          return stage.getAbsoluteTransform().copy().invert().point({ x: stage.width() / 2, y: stage.height() / 2 });
+        },
+        clientToCanvas: (clientX: number, clientY: number) => {
+          const stage = stageRef.current;
+          if (!stage) return null;
+          const box = stage.container().getBoundingClientRect();
+          return stage.getAbsoluteTransform().copy().invert().point({ x: clientX - box.left, y: clientY - box.top });
+        },
         jumpToPeer,
         peerLastActive: (clientId: number) => awarenessRef.current?.getStates().get(clientId)?.lastActive ?? null,
       },
@@ -223,6 +235,43 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     const timer = setTimeout(() => awareness.setLocalStateField("view", viewRef.current), 150);
     return () => clearTimeout(timer);
   }, [awareness, stagePosition, stageScale, width, height]);
+
+  // Saved library items belong to whoever is signed in (or the guest)
+  useEffect(() => {
+    if (localOwner) useCanvasStore.getState().loadLibrary(localOwner);
+  }, [localOwner]);
+
+  // Library items dragged from the panel land where they're dropped
+  useEffect(() => {
+    const container = stageRef.current?.container();
+    if (!container || isToolsDisabled) return;
+    // Both dragenter and dragover have to be cancelled to accept a drop (Firefox/Safari need
+    // the dragenter one)
+    const onDragOver = (e: DragEvent) => {
+      if (!e.dataTransfer || !Array.from(e.dataTransfer.types).includes(DRAG_TYPE)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    };
+    const onDrop = (e: DragEvent) => {
+      const data = e.dataTransfer?.getData(DRAG_TYPE);
+      if (!data) return;
+      e.preventDefault();
+      try {
+        const point = useCanvasStore.getState().viewControls?.clientToCanvas(e.clientX, e.clientY);
+        insertFromLibrary(JSON.parse(data) as LibraryPayload, point ?? undefined);
+      } catch {
+        // Not something we can place
+      }
+    };
+    container.addEventListener("dragenter", onDragOver);
+    container.addEventListener("dragover", onDragOver);
+    container.addEventListener("drop", onDrop);
+    return () => {
+      container.removeEventListener("dragenter", onDragOver);
+      container.removeEventListener("dragover", onDragOver);
+      container.removeEventListener("drop", onDrop);
+    };
+  }, [isToolsDisabled]);
 
   // Restore this room's saved view
   useEffect(() => {

@@ -18,6 +18,8 @@ export const Toolbar = () => {
   const redo = useCanvasStore(state => state.redo);
   const canUndo = useCanvasStore(state => state.canUndo);
   const canRedo = useCanvasStore(state => state.canRedo);
+  const libraryOpen = useCanvasStore(state => state.libraryOpen);
+  const setLibraryOpen = useCanvasStore(state => state.setLibraryOpen);
 
   const tooltip = compact ? "top" : "right";
   const divider = <div className={compact ? "w-px my-1 mx-0.5 bg-line" : "h-px my-1 bg-line"} />;
@@ -42,6 +44,14 @@ export const Toolbar = () => {
         />
       ))}
       {divider}
+      <IconButton
+        icon="shapes"
+        label="Library"
+        active={libraryOpen}
+        onClick={() => setLibraryOpen(!libraryOpen)}
+        tooltip={tooltip}
+        className="library-tool"
+      />
       <IconButton
         icon="tune"
         label="Canvas settings"

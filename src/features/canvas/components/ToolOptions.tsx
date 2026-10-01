@@ -236,7 +236,7 @@ export const ToolOptions = ({ roomId }: { roomId: string }) => {
       className={`${key === "canvas" ? "settings" : key}-options island fixed z-20 w-64 text-sm text-ink select-none
         ${compact
           ? "left-3 right-3 w-auto bottom-[72px] max-h-[calc(100dvh-150px)] overflow-y-auto overflow-x-hidden scrollbar-thin"
-          : "left-[68px] top-1/2 -translate-y-1/2"}`}
+          : "left-[68px] top-1/2 -translate-y-1/2 max-h-[calc(100dvh-24px)] overflow-y-auto overflow-x-hidden scrollbar-thin"}`}
     >
       <header className="flex items-center gap-2 pl-4 pr-1.5 h-11 border-b border-line">
         <Icon iconName={icon} fontSize="18px" className="text-ink-muted" />
