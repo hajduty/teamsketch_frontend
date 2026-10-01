@@ -7,6 +7,8 @@ export function useTransformer(
   obj: CanvasObject,
   yObjects: Y.Map<any>,
   updateObjectsFromYjs: () => void,
+  // Whether this tab has it selected (selection is local, not part of the object)
+  selected = false,
   //userId: string
 ) {
   const shapeRef = useRef<any>(null);
@@ -39,14 +41,14 @@ export function useTransformer(
   }, [yObjects, updateObjectsFromYjs]);
 
   const bindTransformer = useCallback(() => {
-    if (obj.selected && transformerRef.current && shapeRef.current) {
+    if (selected && transformerRef.current && shapeRef.current) {
       transformerRef.current.nodes([shapeRef.current]);
       transformerRef.current.getLayer().batchDraw();
     } else if (transformerRef.current) {
       transformerRef.current.nodes([]);
       transformerRef.current.getLayer().batchDraw();
     }
-  }, [obj.selected]);
+  }, [selected]);
 
     const handleTransformStart = useCallback(() => {
     if (!shapeRef.current) return;

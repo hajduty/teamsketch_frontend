@@ -1,19 +1,12 @@
 // tools/selectTool.ts
-import { Tool, ToolHandlers, ToolOptions } from './baseTool';
+import { Tool, ToolHandlers } from './baseTool';
 import * as Y from 'yjs';
+import { useCanvasStore } from '../canvasStore';
 
 export const SelectTool: Tool = {
+  // Only needs the objects: the selection lives in the store
   create: (
     yObjects: Y.Map<any>,
-    _isDrawing: boolean,
-    _setIsDrawing: (drawing: boolean) => void,
-    _currentState: { current: any },
-    _options: ToolOptions,
-    updateObjectsFromYjs: () => void,
-    _activeTool: string,
-    _setSelectedId: (id: string) => void,
-    _userId: string,
-    setCanDelete?: (canDelete: boolean) => void
   ): ToolHandlers => {    
     const handleClick = (e: any) => {
       const node = e.target;
@@ -24,26 +17,9 @@ export const SelectTool: Tool = {
         : node.findAncestor((n: any) => validTypes.includes(n.getClassName()));
         console.log('Clicked:', node.getClassName(), node.attrs.id);
     
-      Y.transact(yObjects.doc as Y.Doc, () => {
-        if (targetNode && targetNode.attrs.id) {
-          const selectedId = targetNode.attrs.id;
-          yObjects.forEach((obj, id) => {
-            if (obj instanceof Y.Map) {
-              obj.set('selected', id === selectedId);
-              setCanDelete?.(true);
-            }
-          });
-        } else {
-          yObjects.forEach((obj) => {
-            if (obj instanceof Y.Map) {
-              obj.set('selected', false);
-              setCanDelete?.(false);
-            }
-          });
-        }
-      });
-    
-      updateObjectsFromYjs();
+      // The selection is local to this tab (see the store)
+      const selectedId: string | undefined = targetNode?.attrs.id;
+      useCanvasStore.getState().setSelection(selectedId && yObjects.has(selectedId) ? [selectedId] : []);
     };
     
     

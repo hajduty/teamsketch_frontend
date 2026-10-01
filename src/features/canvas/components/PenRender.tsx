@@ -10,6 +10,7 @@ import React from "react";
 
 interface PenRenderProps {
   obj: CanvasObject;
+  activeTool: string;
   isSelected: boolean;
   stageRef: any;
   yObjects: Y.Map<any>;
@@ -22,8 +23,12 @@ const PenRender: FC<PenRenderProps> = ({
   yObjects,
   updateObjectsFromYjs,
   stageRef,
+  activeTool,
+  isSelected,
   //userId
 }) => {
+  // Only the select tool moves or resizes; with the pen, a drag must only draw
+  const editable = isSelected && activeTool === "select";
   const {
     shapeRef,
     transformerRef,
@@ -34,7 +39,7 @@ const PenRender: FC<PenRenderProps> = ({
     handleDragEnd,
     preventDefault,
     handleDragStart,
-  } = useTransformer(obj, yObjects, updateObjectsFromYjs);
+  } = useTransformer(obj, yObjects, updateObjectsFromYjs, isSelected);
 
   const width: number = obj.strokeWidth || 2;
   const color: string = obj.color || "#000";
@@ -79,9 +84,10 @@ const PenRender: FC<PenRenderProps> = ({
     transformerRef.current?.forceUpdate();
   }, [tapered]);
 
+  // The transformer only exists with the select tool; attach it when it appears
   useEffect(() => {
     bindTransformer();
-  }, [bindTransformer]);
+  }, [bindTransformer, activeTool]);
 
   if (!hasPoints) return null;
 
@@ -102,7 +108,7 @@ const PenRender: FC<PenRenderProps> = ({
     scaleX: obj.scaleX,
     scaleY: obj.scaleY,
     opacity: obj.opacity ?? 1,
-    draggable: obj.selected,
+    draggable: editable,
     onDragStart: handleDragStart,
     onDragMove: handleDragMove,
     onDragEnd: handleDragEnd,
@@ -169,7 +175,7 @@ const PenRender: FC<PenRenderProps> = ({
   return (
     <>
       {stroke}
-      {obj.selected && (
+      {editable && (
         <Transformer
           ref={transformerRef}
           onDragEnd={preventDefault}
@@ -182,6 +188,7 @@ const PenRender: FC<PenRenderProps> = ({
 
 // The canvas keeps an object's identity until it changes in Yjs, so this skips unchanged
 // strokes without comparing their points
-const areEqual = (prevProps: PenRenderProps, nextProps: PenRenderProps) => prevProps.obj === nextProps.obj;
+const areEqual = (prevProps: PenRenderProps, nextProps: PenRenderProps) =>
+  prevProps.obj === nextProps.obj && prevProps.activeTool === nextProps.activeTool && prevProps.isSelected === nextProps.isSelected;
 
 export default React.memo(PenRender, areEqual);

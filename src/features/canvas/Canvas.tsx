@@ -14,6 +14,10 @@ import { RemoteCursors } from "./components/RemoteCursors";
 import { colorFor, readPeers } from "./presence";
 import { bindLocalCanvas, GUEST_OWNER, loadLocalCanvas } from "./localCanvas";
 import { SelectTool } from "./tools/selectTool";
+import { assetNodeAt } from "./objectGeometry";
+import AssetRender from "./components/AssetRender";
+import { DRAG_TYPE, insertFromLibrary, LibraryPayload } from "./assets/insert";
+import { getTransformedPointer } from "../../utils/utils";
 import InfiniteGrid from "./components/InfiniteGrid";
 import { Minimap } from "./components/Minimap";
 import { QuickMenu } from "./components/QuickMenu";
@@ -76,12 +80,13 @@ const sameObject = (a: CanvasObject, b: CanvasObject) => {
 const TOOLS: Record<string, Tool> = {
   pen: PenTool,
   text: TextTool,
-  select: SelectTool
+  select: SelectTool,
 };
 
 const TOOLS_COMPONENTS: Record<string, FC<any>> = {
   path: PenRender,
   text: TextRender,
+  asset: AssetRender,
 };
 
 export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, role }) => {
@@ -129,7 +134,9 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     captureTimeout: 200,
   }));
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // This tab's selection (local, see the store)
+  const selectedIds = useCanvasStore(state => state.selectedIds);
+  const noSelectedId = useCallback(() => {}, []);
   const isToolsDisabled = role === "none" || role === "viewer" || role === "";
 
   // Pick only what the board uses: subscribing to the whole store re-rendered every object
@@ -146,7 +153,8 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
   const setCanDelete = useCanvasStore(state => state.setCanDelete);
 
   // Right-click quick settings menu
-  const [quickMenu, setQuickMenu] = useState<{ x: number; y: number } | null>(null);
+  // Where it was opened (screen), the canvas point under it, and the shape it was opened on
+  const [quickMenu, setQuickMenu] = useState<{ x: number; y: number; point: { x: number; y: number } | null; targetId?: string } | null>(null);
   const closeQuickMenu = useCallback(() => setQuickMenu(null), []);
 
   // Zoom around the centre of the screen, for the zoom buttons
@@ -198,6 +206,17 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         zoomIn: () => zoomTo((stageRef.current?.scaleX() ?? 1) * 1.25),
         zoomOut: () => zoomTo((stageRef.current?.scaleX() ?? 1) / 1.25),
         resetZoom: () => zoomTo(1),
+        center: () => {
+          const stage = stageRef.current;
+          if (!stage) return { x: 0, y: 0 };
+          return stage.getAbsoluteTransform().copy().invert().point({ x: stage.width() / 2, y: stage.height() / 2 });
+        },
+        clientToCanvas: (clientX: number, clientY: number) => {
+          const stage = stageRef.current;
+          if (!stage) return null;
+          const box = stage.container().getBoundingClientRect();
+          return stage.getAbsoluteTransform().copy().invert().point({ x: clientX - box.left, y: clientY - box.top });
+        },
         jumpToPeer,
         peerLastActive: (clientId: number) => awarenessRef.current?.getStates().get(clientId)?.lastActive ?? null,
       },
@@ -221,6 +240,43 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     const timer = setTimeout(() => awareness.setLocalStateField("view", viewRef.current), 150);
     return () => clearTimeout(timer);
   }, [awareness, stagePosition, stageScale, width, height]);
+
+  // Saved library items belong to whoever is signed in (or the guest)
+  useEffect(() => {
+    if (localOwner) useCanvasStore.getState().loadLibrary(localOwner);
+  }, [localOwner]);
+
+  // Library items dragged from the panel land where they're dropped
+  useEffect(() => {
+    const container = stageRef.current?.container();
+    if (!container || isToolsDisabled) return;
+    // Both dragenter and dragover have to be cancelled to accept a drop (Firefox/Safari need
+    // the dragenter one)
+    const onDragOver = (e: DragEvent) => {
+      if (!e.dataTransfer || !Array.from(e.dataTransfer.types).includes(DRAG_TYPE)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    };
+    const onDrop = (e: DragEvent) => {
+      const data = e.dataTransfer?.getData(DRAG_TYPE);
+      if (!data) return;
+      e.preventDefault();
+      try {
+        const point = useCanvasStore.getState().viewControls?.clientToCanvas(e.clientX, e.clientY);
+        insertFromLibrary(JSON.parse(data) as LibraryPayload, point ?? undefined);
+      } catch {
+        // Not something we can place
+      }
+    };
+    container.addEventListener("dragenter", onDragOver);
+    container.addEventListener("dragover", onDragOver);
+    container.addEventListener("drop", onDrop);
+    return () => {
+      container.removeEventListener("dragenter", onDragOver);
+      container.removeEventListener("dragover", onDragOver);
+      container.removeEventListener("drop", onDrop);
+    };
+  }, [isToolsDisabled]);
 
   // Restore this room's saved view
   useEffect(() => {
@@ -371,13 +427,20 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         activeTool={activeTool}
         updateObjectsFromYjs={updateObjectsFromYjs}
         isSpacePressed={isSpacePressed}
-        isSelected={selectedId === obj.id}
+        isSelected={selectedIds.includes(obj.id)}
         stageRef={stageRef}
         userId={user?.id}
         editing={editingId === obj.id}
       />
     ) : null;
-  }), [objects, yObjects, toolOptions, activeTool, updateObjectsFromYjs, isSpacePressed, selectedId, user?.id, editingId]);
+  }), [objects, yObjects, toolOptions, activeTool, updateObjectsFromYjs, isSpacePressed, selectedIds, user?.id, editingId]);
+
+  // Someone else may delete what's selected here
+  useEffect(() => {
+    if (selectedIds.length === 0) return;
+    const kept = selectedIds.filter(id => objects.some(obj => obj.id === id));
+    if (kept.length !== selectedIds.length) useCanvasStore.getState().setSelection(kept);
+  }, [objects, selectedIds]);
 
   const tool = TOOLS[activeTool] || PenTool;
   const {
@@ -394,7 +457,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     toolOptions, // <-- Use toolOptions from store
     updateObjectsFromYjs,
     activeTool,
-    setSelectedId,
+    noSelectedId,
     awarenessRef.current?.getLocalState()?.userId,
     setCanDelete
   );
@@ -441,7 +504,12 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         onContextMenu={(e) => {
           e.evt.preventDefault();
           if (isToolsDisabled || isSpacePressed) return;
-          setQuickMenu({ x: e.evt.clientX, y: e.evt.clientY });
+          setQuickMenu({
+            x: e.evt.clientX,
+            y: e.evt.clientY,
+            point: getTransformedPointer(e.target.getStage()!),
+            targetId: assetNodeAt(e.target)?.attrs.id,
+          });
         }}
         onDblClick={(e) => {
           if (!isSpacePressed && !isToolsDisabled && (isDoubleClick() && handleClick)) {
@@ -466,7 +534,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
             : "Offline. Changes are saved on this device and sync when you're back."}
         </div>
       ) : null}
-      {quickMenu && <QuickMenu x={quickMenu.x} y={quickMenu.y} onClose={closeQuickMenu} />}
+      {quickMenu && <QuickMenu x={quickMenu.x} y={quickMenu.y} point={quickMenu.point} targetId={quickMenu.targetId} onClose={closeQuickMenu} />}
       <Minimap
         stageRef={stageRef}
         objects={objects}

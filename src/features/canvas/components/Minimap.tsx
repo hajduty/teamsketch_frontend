@@ -3,6 +3,9 @@ import Konva from "konva";
 import { CanvasObject } from "../tools/baseTool";
 import { useCanvasStore } from "../canvasStore";
 import { useIsCompact } from "../../../hooks/useIsCompact";
+import { objectBounds, objectTransform, Rect, union } from "../objectGeometry";
+import { getAsset, categoryColor } from "../assets/catalog";
+import { drawAsset } from "../assets/draw";
 
 interface MinimapProps {
   stageRef: React.RefObject<Konva.Stage | null>;
@@ -20,55 +23,11 @@ const MOBILE_HEIGHT = 100;
 const PADDING = 0.08;       // extra space around the content, as a fraction of its size
 const HIDE_AFTER_MS = 1500;
 
-type Rect = { x: number; y: number; width: number; height: number };
-
-const union = (a: Rect, b: Rect): Rect => {
-  const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
-  return {
-    x,
-    y,
-    width: Math.max(a.x + a.width, b.x + b.width) - x,
-    height: Math.max(a.y + a.height, b.y + b.height) - y,
-  };
-};
-
-/** World-space bounds of an object, applying its move/rotate/scale like Konva does. */
-const objectBounds = (obj: CanvasObject): Rect | null => {
-  let local: { x: number; y: number }[];
-  if (obj.type === "text") {
-    const lines = String(obj.text ?? "").split("\n").length;
-    const w = obj.width || 200, h = (obj.fontSize || 16) * 1.2 * lines;
-    local = [{ x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h }];
-  } else if (Array.isArray(obj.points) && obj.points.length >= 2) {
-    local = [];
-    for (let i = 0; i + 1 < obj.points.length; i += 2) local.push({ x: obj.points[i], y: obj.points[i + 1] });
-  } else {
-    return null;
-  }
-  const t = objectTransform(obj);
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const p of local) {
-    const q = t.point(p);
-    minX = Math.min(minX, q.x); minY = Math.min(minY, q.y);
-    maxX = Math.max(maxX, q.x); maxY = Math.max(maxY, q.y);
-  }
-  const pad = (obj.strokeWidth || 0) / 2;
-  return { x: minX - pad, y: minY - pad, width: maxX - minX + pad * 2, height: maxY - minY + pad * 2 };
-};
-
 // Objects keep their identity until they change, so their bounds can be cached
 const boundsCache = new WeakMap<CanvasObject, Rect | null>();
 const cachedBounds = (obj: CanvasObject) => {
   if (!boundsCache.has(obj)) boundsCache.set(obj, objectBounds(obj));
   return boundsCache.get(obj)!;
-};
-
-const objectTransform = (obj: CanvasObject) => {
-  const t = new Konva.Transform();
-  t.translate(obj.x || 0, obj.y || 0);
-  t.rotate(((obj.rotation || 0) * Math.PI) / 180);
-  t.scale(obj.scaleX ?? 1, obj.scaleY ?? 1);
-  return t;
 };
 
 export const Minimap: FC<MinimapProps> = ({ stageRef, objects, stageScale, stagePosition, setStagePosition, roomId }) => {
@@ -206,6 +165,18 @@ export const Minimap: FC<MinimapProps> = ({ stageRef, objects, stageScale, stage
     for (const obj of objects) {
       const t = toMap.copy().multiply(objectTransform(obj));
       ctx.globalAlpha = obj.opacity ?? 1;
+
+      if (obj.type === "asset") {
+        const def = getAsset(obj.assetId);
+        if (!def) continue;
+        // Same drawing as on the canvas, in the map's scale
+        const m = t.getMatrix();
+        ctx.save();
+        ctx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+        drawAsset(ctx, def, obj.width || def.width, obj.height || def.height, { color: obj.color || categoryColor(def), label: obj.label });
+        ctx.restore();
+        continue;
+      }
 
       if (obj.type === "text") {
         const fontSize = (obj.fontSize || 16) * scale * (obj.scaleY ?? 1);

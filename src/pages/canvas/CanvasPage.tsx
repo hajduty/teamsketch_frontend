@@ -15,6 +15,7 @@ import Joyride, { Step, STATUS, CallBackProps } from "react-joyride";
 import { useCanvasStore } from "../../features/canvas/canvasStore";
 import { IconButton } from "../../components/IconButton";
 import { SelectionBar } from "../../features/canvas/components/SelectionBar";
+import { LibraryPanel } from "../../features/canvas/components/LibraryPanel";
 import apiClient from "../../lib/apiClient";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { apiRoutes } from "../../lib/apiRoutes";
@@ -146,7 +147,8 @@ function CanvasPage({ roomId }: { roomId: string }) {
     if (action === "next" || action === "start") {
       switch (index) {
         case 1:
-          useCanvasStore.setState({ tool: "pen", optionsPanel: "tool", toolOptionsOpen: true });
+          useCanvasStore.getState().setTool("pen");
+          useCanvasStore.setState({ optionsPanel: "tool", toolOptionsOpen: true });
           break;
         case 3:
           useCanvasStore.getState().setRoomListOpen(true);
@@ -281,6 +283,7 @@ function CanvasPage({ roomId }: { roomId: string }) {
         <Toolbar />
         <ToolOptions roomId={roomId!} />
         <SelectionBar />
+        <LibraryPanel />
       </>
       }
       <CanvasList roomId={roomId!} />
