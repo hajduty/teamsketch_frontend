@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Tool, ToolHandlers, ToolOptions } from './baseTool';
 import * as Y from 'yjs';
 import { getTransformedPointer } from '../../../utils/utils';
+import { useCanvasStore } from '../canvasStore';
 
 export const TextTool: Tool = {
   create: (
@@ -21,17 +22,8 @@ export const TextTool: Tool = {
       if (activeTool !== 'text') return;
 
       const clickedOnText = e.target.findAncestor('Text');
-      
-      Y.transact(yObjects.doc as Y.Doc, () => {
-        if (!clickedOnText) {
-          yObjects.forEach((obj) => {
-            if (obj instanceof Y.Map) {
-              obj.set('selected', false);
-            }
-          });
-      }}, _userId);
-      
-      updateObjectsFromYjs();
+      // Clicking empty canvas deselects (the selection is local to this tab)
+      if (!clickedOnText) useCanvasStore.getState().setSelection([]);
     };
 
     const handleDblClick = (e: any) => {
@@ -54,18 +46,10 @@ export const TextTool: Tool = {
           fontFamily: options.fontFamily || 'Arial',
           color: options.color || '#000000',
           width: 200,
-          selected: true,
           rotation: 0
         };
 
         Y.transact(yObjects.doc as Y.Doc, () => {
-          // Deselect all existing text objects
-          yObjects.forEach((obj) => {
-            if (obj instanceof Y.Map && obj.get('selected')) {
-              obj.set('selected', false);
-            }
-          });
-
           // Create new text object
           const yTextObj = new Y.Map();
           Object.entries(textObj).forEach(([key, value]) => {
@@ -73,6 +57,8 @@ export const TextTool: Tool = {
           });
           yObjects.set(textObj.id, yTextObj);
         }, _userId);
+        // The new text is the (local) selection
+        useCanvasStore.getState().setSelection([textObj.id]);
 
         updateObjectsFromYjs();
       }

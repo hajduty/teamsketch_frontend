@@ -38,6 +38,9 @@ interface CanvasState {
   toolbarOpen: boolean;
   roomListOpen: boolean;
   canDelete: boolean;
+  // What this tab has selected. Local only: other people in the room don't share it, so they
+  // can't move or delete it, and it isn't part of the undo history.
+  selectedIds: string[];
   // Category of the library shape added or changed last, for "similar shapes" in the
   // right-click menu
   recentCategory: string;
@@ -69,6 +72,7 @@ interface CanvasActions {
   setToolbarOpen: (state: boolean) => void;
   setRoomListOpen: (state: boolean) => void;
   setCanDelete: (state: boolean) => void;
+  setSelection: (ids: string[]) => void;
   noteAssetUsed: (assetId: string) => void;
   setLibraryOpen: (state: boolean) => void;
   loadLibrary: (owner: string) => void;
@@ -109,19 +113,9 @@ let ydoc: Y.Doc | null = null;
 let yObjects: Y.Map<any> | null = null;
 let undoManager: Y.UndoManager | null = null;
 
-/**
- * Deselect everything, e.g. when switching tools: a selection left behind stays draggable and
- * a pen stroke over it would move it too. Not an undoable change (undo tracks only
- * transactions without an origin).
- */
-const clearSelection = (set: (state: Partial<CanvasStore>) => void) => {
-  if (!yObjects || !ydoc) return;
-  const map = yObjects;
-  Y.transact(ydoc, () => {
-    map.forEach(obj => { if (obj instanceof Y.Map && obj.get('selected')) obj.set('selected', false); });
-  }, 'selection');
-  set({ canDelete: false });
-};
+// Deselect everything, e.g. when switching tools: a selection left behind stays draggable
+// and a pen stroke over it would move it too
+const clearSelection = (set: (state: Partial<CanvasStore>) => void) => set({ selectedIds: [], canDelete: false });
 
 export const useCanvasStore = create<CanvasStore>(
   ((set, get) => ({
@@ -151,6 +145,7 @@ export const useCanvasStore = create<CanvasStore>(
     canUndo: false,
     canRedo: false,
     canDelete: false,
+    selectedIds: [],
     recentCategory: ASSETS[0].category,
     libraryOpen: false,
     libraryOwner: null,
@@ -221,6 +216,8 @@ export const useCanvasStore = create<CanvasStore>(
 
     setCanDelete: (canDelete) => set({ canDelete }),
 
+    setSelection: (ids) => set({ selectedIds: ids, canDelete: ids.length > 0 }),
+
     noteAssetUsed: (assetId) => {
       const asset = getAsset(assetId);
       if (asset) set({ recentCategory: asset.category });
@@ -259,7 +256,6 @@ export const useCanvasStore = create<CanvasStore>(
       if (!yObjects || !ydoc || objects.length === 0) return;
       const map = yObjects;
       Y.transact(ydoc, () => {
-        if (select) map.forEach(obj => { if (obj instanceof Y.Map && obj.get('selected')) obj.set('selected', false); });
         for (const { id, ...props } of objects) {
           const yObj = new Y.Map<unknown>();
           yObj.set('id', id);
@@ -268,11 +264,10 @@ export const useCanvasStore = create<CanvasStore>(
             // Point lists are Y.Arrays, like the ones the pen creates
             yObj.set(key, Array.isArray(value) ? Y.Array.from(value) : value);
           }
-          if (select) yObj.set('selected', true);
           map.set(id, yObj);
         }
       });
-      if (select) set({ canDelete: true });
+      if (select) get().setSelection(objects.map(obj => obj.id));
     },
 
     updateObject: (id, props) => {
@@ -293,8 +288,9 @@ export const useCanvasStore = create<CanvasStore>(
 
     selectedObjects: () => {
       const selected: CanvasObject[] = [];
+      const ids = new Set(get().selectedIds);
       yObjects?.forEach((value, id) => {
-        if (!(value instanceof Y.Map) || !value.get('selected')) return;
+        if (!(value instanceof Y.Map) || !ids.has(id)) return;
         const plain: CanvasObject = { id, type: value.get('type') };
         value.forEach((v, key) => { plain[key] = v instanceof Y.Array ? v.toArray() : v; });
         selected.push(plain);
@@ -329,14 +325,11 @@ export const useCanvasStore = create<CanvasStore>(
     delete: () => {
       if (!(yObjects instanceof Y.Map) || !ydoc) return;
       const map = yObjects;
-
+      const ids = get().selectedIds;
       Y.transact(ydoc, () => {
-        map.forEach((obj, id) => {
-          if (obj instanceof Y.Map && obj.get('selected')) {
-            map.delete(id);
-          }
-        });
+        for (const id of ids) map.delete(id);
       });
+      set({ selectedIds: [], canDelete: false });
     },
 
     setToolbarOpen: (toolbarOpen) => set({ toolbarOpen }),

@@ -15,12 +15,13 @@ interface AssetRenderProps {
   updateObjectsFromYjs: () => void;
   activeTool: string;
   editing: boolean;
+  isSelected: boolean;
 }
 
 const MIN_SIZE = 24;
 
 /** A plot shape (server, database, ...): one Konva shape drawn with the shared asset drawing. */
-const AssetRender: FC<AssetRenderProps> = ({ obj, yObjects, updateObjectsFromYjs, activeTool, editing }) => {
+const AssetRender: FC<AssetRenderProps> = ({ obj, yObjects, updateObjectsFromYjs, activeTool, editing, isSelected }) => {
   const {
     shapeRef,
     transformerRef,
@@ -30,7 +31,7 @@ const AssetRender: FC<AssetRenderProps> = ({ obj, yObjects, updateObjectsFromYjs
     handleDragMove,
     handleDragEnd,
     preventDefault,
-  } = useTransformer(obj, yObjects, updateObjectsFromYjs);
+  } = useTransformer(obj, yObjects, updateObjectsFromYjs, isSelected);
   const setEditing = useCanvasStore(state => state.setEditing);
   const setEditingId = useCanvasStore(state => state.setEditingId);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -73,7 +74,7 @@ const AssetRender: FC<AssetRenderProps> = ({ obj, yObjects, updateObjectsFromYjs
 
   const label = labelBox(def, width, height);
   // Only the select tool moves or resizes; with the pen, a drag must only draw
-  const editable = !!obj.selected && activeTool === "select" && !editing;
+  const editable = isSelected && activeTool === "select" && !editing;
 
   return (
     <>
@@ -172,6 +173,6 @@ const AssetRender: FC<AssetRenderProps> = ({ obj, yObjects, updateObjectsFromYjs
 };
 
 const areEqual = (prev: AssetRenderProps, next: AssetRenderProps) =>
-  prev.obj === next.obj && prev.editing === next.editing && prev.activeTool === next.activeTool;
+  prev.obj === next.obj && prev.editing === next.editing && prev.activeTool === next.activeTool && prev.isSelected === next.isSelected;
 
 export default React.memo(AssetRender, areEqual);

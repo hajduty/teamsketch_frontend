@@ -134,7 +134,9 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     captureTimeout: 200,
   }));
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // This tab's selection (local, see the store)
+  const selectedIds = useCanvasStore(state => state.selectedIds);
+  const noSelectedId = useCallback(() => {}, []);
   const isToolsDisabled = role === "none" || role === "viewer" || role === "";
 
   // Pick only what the board uses: subscribing to the whole store re-rendered every object
@@ -425,13 +427,20 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
         activeTool={activeTool}
         updateObjectsFromYjs={updateObjectsFromYjs}
         isSpacePressed={isSpacePressed}
-        isSelected={selectedId === obj.id}
+        isSelected={selectedIds.includes(obj.id)}
         stageRef={stageRef}
         userId={user?.id}
         editing={editingId === obj.id}
       />
     ) : null;
-  }), [objects, yObjects, toolOptions, activeTool, updateObjectsFromYjs, isSpacePressed, selectedId, user?.id, editingId]);
+  }), [objects, yObjects, toolOptions, activeTool, updateObjectsFromYjs, isSpacePressed, selectedIds, user?.id, editingId]);
+
+  // Someone else may delete what's selected here
+  useEffect(() => {
+    if (selectedIds.length === 0) return;
+    const kept = selectedIds.filter(id => objects.some(obj => obj.id === id));
+    if (kept.length !== selectedIds.length) useCanvasStore.getState().setSelection(kept);
+  }, [objects, selectedIds]);
 
   const tool = TOOLS[activeTool] || PenTool;
   const {
@@ -448,7 +457,7 @@ export const CanvasBoard: FC<{ roomId: string, role?: string }> = ({ roomId, rol
     toolOptions, // <-- Use toolOptions from store
     updateObjectsFromYjs,
     activeTool,
-    setSelectedId,
+    noSelectedId,
     awarenessRef.current?.getLocalState()?.userId,
     setCanDelete
   );

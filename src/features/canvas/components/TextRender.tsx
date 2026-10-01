@@ -20,6 +20,8 @@ export type TextToolProps = {
   updateObjectsFromYjs: () => void;
   userId: string;
   editing: boolean;
+  // Selected in this tab (selection is local, not part of the object)
+  isSelected: boolean;
 };
 
 const areEqual = (prev: TextToolProps, next: TextToolProps) => {
@@ -28,7 +30,7 @@ const areEqual = (prev: TextToolProps, next: TextToolProps) => {
     prev.obj.x === next.obj.x &&
     prev.obj.y === next.obj.y &&
     prev.obj.text === next.obj.text &&
-    prev.obj.selected === next.obj.selected &&
+    prev.isSelected === next.isSelected &&
     prev.activeTool === next.activeTool &&
     prev.editing === next.editing
   );
@@ -40,8 +42,8 @@ export const TextRender: React.FC<TextToolProps> = React.memo(({
   toolOptions,
   activeTool,
   updateObjectsFromYjs,
-  userId,
-  editing
+  editing,
+  isSelected
 }) => {
   const setGlobalEditing = useCanvasStore((state) => state.setEditing);
   const setGlobalEditingId = useCanvasStore((state) => state.setEditingId);
@@ -56,7 +58,7 @@ export const TextRender: React.FC<TextToolProps> = React.memo(({
     updateObject,
     handleDragStart,
     handleDragMove
-  } = useTransformer(obj, yObjects, updateObjectsFromYjs);
+  } = useTransformer(obj, yObjects, updateObjectsFromYjs, isSelected);
 
   useEffect(() => {
     if (!editing) {
@@ -81,16 +83,9 @@ export const TextRender: React.FC<TextToolProps> = React.memo(({
   const handleSelect = useCallback((e: any) => {
     e.cancelBubble = true;
     if (activeTool === "text" || activeTool === "select") {
-      Y.transact(yObjects.doc as Y.Doc, () => {
-        yObjects.forEach((item, itemId) => {
-          if (item instanceof Y.Map) {
-            item.set("selected", itemId === obj.id);
-          }
-        });
-      }, userId);
-      updateObjectsFromYjs();
+      useCanvasStore.getState().setSelection([obj.id]);
     }
-  }, [activeTool, obj.id, yObjects, updateObjectsFromYjs]);
+  }, [activeTool, obj.id]);
 
   //console.log("rerendered");
 
@@ -107,7 +102,7 @@ export const TextRender: React.FC<TextToolProps> = React.memo(({
         fill={obj.color || toolOptions.current.color}
         width={obj.width || 200}
         rotation={obj.rotation || 0}
-        draggable={!editing && obj.selected && (activeTool === "select" || activeTool === "text")}
+        draggable={!editing && isSelected && (activeTool === "select" || activeTool === "text")}
         onDragMove={handleDragMove}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
@@ -131,7 +126,7 @@ export const TextRender: React.FC<TextToolProps> = React.memo(({
         />
       )}
 
-      {obj.selected && !editing && (activeTool === "select" || activeTool === "text") && (
+      {isSelected && !editing && (activeTool === "select" || activeTool === "text") && (
         <Transformer
           id={obj.id}
           ref={transformerRef}
