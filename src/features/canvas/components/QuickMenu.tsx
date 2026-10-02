@@ -82,7 +82,6 @@ const SimilarShapes: FC<{ point?: { x: number; y: number } | null; targetId?: st
             onClick={() => setCategory(c.id)}
             className="flex items-center gap-1 h-6 px-2 rounded-full bg-canvas border border-line text-[11px] text-ink-muted hover:text-ink cursor-pointer"
           >
-            <span className="size-1.5 rounded-full" style={{ backgroundColor: c.color }} />
             {c.name}
           </button>
         ))}

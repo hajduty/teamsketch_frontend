@@ -154,6 +154,18 @@ const PenRender: FC<PenRenderProps> = ({
       // Crisp corners on rectangles/squares
       lineJoin: shape === "rectangle" || shape === "square" ? "miter" as const : "round" as const,
       closed: !!shape,
+      // A closed line's hit area includes its inside (Konva fills it on the hit canvas even
+      // without a fill colour); smart shapes are outlines, so only the outline is clickable,
+      // and things drawn inside them stay selectable
+      hitFunc: shape
+        ? (context: Konva.Context, node: Konva.Shape) => {
+          context.beginPath();
+          context.moveTo(smoothPoints[0], smoothPoints[1]);
+          for (let i = 2; i < smoothPoints.length; i += 2) context.lineTo(smoothPoints[i], smoothPoints[i + 1]);
+          context.closePath();
+          context.strokeShape(node);
+        }
+        : undefined,
     };
     if (!shape && (obj.arrowStart || obj.arrowEnd)) {
       const size = arrowSize(width);

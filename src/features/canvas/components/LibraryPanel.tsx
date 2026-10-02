@@ -85,7 +85,7 @@ export const LibraryPanel = () => {
         {CATEGORIES.map(category => (
           <Section
             key={category.id}
-            title={<><span className="size-1.5 rounded-full" style={{ backgroundColor: category.color }} />{category.name}</>}
+            title={category.name}
           >
             {assetsIn(category.id).map(asset => (
               <Tile key={asset.id} payload={{ kind: "asset", id: asset.id }} name={asset.name}>
