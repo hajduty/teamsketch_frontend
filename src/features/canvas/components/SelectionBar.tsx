@@ -35,7 +35,7 @@ export const SelectionBar = () => {
   const addToLibrary = () => {
     const store = useCanvasStore.getState();
     const objects = store.selectedObjects();
-    const item = makeLibraryItem(objects, itemName(objects));
+    const item = makeLibraryItem(objects, itemName(objects), store.zoom);
     if (!item) return;
     setSaved(store.addLibraryItem(item) ? "added" : "full");
   };

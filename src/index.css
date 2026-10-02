@@ -4,23 +4,24 @@
     --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
 
     /* Surfaces, darkest to lightest */
-    --color-canvas: #18191c;      /* drawing area */
+    --color-canvas: #0b0b0b;      /* drawing area */
+    --color-field: #18191c;       /* inputs, toggles and wells inside panels */
     --color-surface: #1f2024;     /* floating islands, menus, dialogs */
     --color-raised: #2a2c31;      /* hover / pressed / inputs */
     --color-line: #33353b;        /* hairline borders */
     --color-line-strong: #43464e; /* input borders, dividers that must read */
 
-    /* Text */
+    /* Text. Each level is at least 4.5:1 (WCAG AA) on every surface up to raised. */
     --color-ink: #ececef;
-    --color-ink-muted: #9a9ca5;
-    --color-ink-faint: #6b6e77;
+    --color-ink-muted: #b0b2ba;
+    --color-ink-faint: #92949b;
 
     /* Accent (kept from the original blue) */
     --color-accent: #155dfc;
-    --color-accent-hover: #2b6dff;
+    --color-accent-hover: #1f62f5;  /* darker on hover keeps white text at 4.5:1 */
     --color-accent-soft: rgb(21 93 252 / 0.16);
 
-    --color-danger: #f0525a;
+    --color-danger: #f87178;        /* 4.5:1 as text on its own tints and on raised */
 
     /* Legacy names still used in a few places */
     --color-dark: #1f2024;

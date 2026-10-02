@@ -113,7 +113,7 @@ export const UserInfo = () => {
                 ) : (
                 <Button
                   onClick={logout}
-                  className="bg-danger/12 hover:bg-danger/20 text-danger px-3 h-9 rounded-lg transition-colors duration-100 flex items-center gap-1.5 text-sm font-medium cursor-pointer"
+                  className="bg-danger/12 hover:bg-danger/16 text-danger px-3 h-9 rounded-lg transition-colors duration-100 flex items-center gap-1.5 text-sm font-medium cursor-pointer"
                 >
                   <Icon iconName="logout" color="white" fontSize="16px" />
                   Log out

@@ -56,7 +56,7 @@ const SimilarShapes: FC<{ point?: { x: number; y: number } | null; targetId?: st
       <div className="h-px bg-line -mx-2" />
       <div className="flex items-center justify-between px-1">
         <span className="text-xs text-ink-faint">{targetId ? "Change to" : "Similar shapes"}</span>
-        <span className="text-xs font-medium" style={{ color: info?.color }}>{info?.name}</span>
+        <span className="text-xs font-medium text-ink-muted">{info?.name}</span>
       </div>
       <div className="grid grid-cols-4 gap-1" role="group" aria-label={`${info?.name} shapes`}>
         {assetsIn(category).map(asset => (
@@ -80,7 +80,7 @@ const SimilarShapes: FC<{ point?: { x: number; y: number } | null; targetId?: st
             key={c.id}
             type="button"
             onClick={() => setCategory(c.id)}
-            className="flex items-center gap-1 h-6 px-2 rounded-full bg-canvas border border-line text-[11px] text-ink-muted hover:text-ink cursor-pointer"
+            className="flex items-center gap-1 h-6 px-2 rounded-full bg-field border border-line text-[11px] text-ink-muted hover:text-ink cursor-pointer"
           >
             {c.name}
           </button>

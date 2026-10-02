@@ -47,7 +47,7 @@ export const Color = ({ className, onChange, value }: { className?: string, onCh
   return (
     <>
       <div className={`relative w-full ${className}`} ref={dropdownRef}>
-        <div className="flex flex-row items-center w-full h-8 text-ink text-xs bg-canvas border border-line-strong rounded-md focus-within:border-accent">
+        <div className="flex flex-row items-center w-full h-8 text-ink text-xs bg-field border border-line-strong rounded-md focus-within:border-accent">
           <input type="text" aria-label="Color value" className="bg-transparent text-ink border-none outline-none px-2 text-xs w-full min-w-0 tabular" ref={inputRef}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}

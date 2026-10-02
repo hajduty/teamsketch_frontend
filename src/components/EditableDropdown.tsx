@@ -62,7 +62,7 @@ export default function EditableDropdown({
 
   return (
     <div className={`relative w-full ${className}`} ref={dropdownRef}>
-      <div className="flex flex-row items-center justify-between w-full h-8 text-ink text-xs bg-canvas border border-line-strong rounded-md focus-within:border-accent">
+      <div className="flex flex-row items-center justify-between w-full h-8 text-ink text-xs bg-field border border-line-strong rounded-md focus-within:border-accent">
         <input
           ref={inputRef}
           type="text"

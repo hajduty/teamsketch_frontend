@@ -20,7 +20,7 @@ const Segmented = <T extends string>({ value, options, onChange, disabled, label
   <div
     role="radiogroup"
     aria-label={label}
-    className={`flex w-full p-0.5 gap-0.5 rounded-md bg-canvas border border-line text-xs ${disabled ? "opacity-40 pointer-events-none" : ""}`}
+    className={`flex w-full p-0.5 gap-0.5 rounded-md bg-field border border-line text-xs ${disabled ? "opacity-40 pointer-events-none" : ""}`}
   >
     {options.map(option => (
       <button
@@ -200,12 +200,12 @@ export const CanvasOptions = ({ roomId }: { roomId: string }) => {
     <Section>
       <Row label="Background">
         <div className="w-32">
-          <Color onChange={(value: string) => saveStageState(roomId, { backgroundColor: value })} value={stage?.backgroundColor ?? "#18191c"} />
+          <Color onChange={(value: string) => saveStageState(roomId, { backgroundColor: value })} value={stage?.backgroundColor ?? "#0b0b0b"} />
         </div>
       </Row>
       <Row label="Grid lines">
         <div className="w-32">
-          <Color onChange={(value: string) => saveStageState(roomId, { borderColor: value })} value={stage?.borderColor ?? "#2a2c31"} />
+          <Color onChange={(value: string) => saveStageState(roomId, { borderColor: value })} value={stage?.borderColor ?? "#2a2a2a"} />
         </div>
       </Row>
     </Section>
