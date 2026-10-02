@@ -12,13 +12,15 @@ export const insertFromLibrary = (payload: LibraryPayload, point?: { x: number; 
   const store = useCanvasStore.getState();
   const at = point ?? store.viewControls?.center();
   if (!at) return;
+  // Same size on screen at any zoom
+  const zoom = store.zoom > 0 ? store.zoom : 1;
   if (payload.kind === "asset") {
     const def = getAsset(payload.id);
     if (!def) return;
-    store.insertObjects([newAssetObject(def, at)], true);
+    store.insertObjects([newAssetObject(def, at, zoom)], true);
     store.noteAssetUsed(def.id);
   } else {
     const item = store.libraryItems.find(i => i.id === payload.id);
-    if (item) store.insertObjects(instantiateItem(item, at), true);
+    if (item) store.insertObjects(instantiateItem(item, at, zoom), true);
   }
 };

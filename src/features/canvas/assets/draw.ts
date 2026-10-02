@@ -23,8 +23,15 @@ const roundRect = (c: CanvasRenderingContext2D, x: number, y: number, w: number,
   c.closePath();
 };
 
-/** Where the label goes, in shape coordinates: its centre line and the width it may use. */
-export const labelBox = (def: AssetDef, w: number, h: number) => {
+/**
+ * How much a shape is scaled from its design size. Shapes are drawn at design size and
+ * scaled uniformly, so outline width, corners, icon and label keep their proportions whether
+ * a shape was placed zoomed in or out, or resized.
+ */
+const designScale = (def: AssetDef, w: number, h: number) => Math.max(0.01, Math.min(w / def.width, h / def.height));
+
+/** Label placement at design scale (w, h are in design units). */
+const designLabelBox = (def: AssetDef, w: number, h: number) => {
   switch (def.outline) {
     case "actor": return { x: w / 2, y: h - 9, width: w * 1.6, size: 13 };
     case "boundary": return { x: 12, y: 16, width: w - 24, size: 13, align: "left" as const };
@@ -32,6 +39,13 @@ export const labelBox = (def: AssetDef, w: number, h: number) => {
     case "note": return { x: w / 2, y: h / 2, width: w - 24, size: 14 };
     default: return { x: w / 2, y: def.icon ? h * 0.72 : h / 2, width: w - 20, size: 13 };
   }
+};
+
+/** Where the label goes, in shape coordinates: its centre line, the width it may use and its size. */
+export const labelBox = (def: AssetDef, w: number, h: number) => {
+  const k = designScale(def, w, h);
+  const box = designLabelBox(def, w / k, h / k);
+  return { ...box, x: box.x * k, y: box.y * k, width: box.width * k, size: box.size * k };
 };
 
 /** Path of the outline (without stroking or filling). */
@@ -202,8 +216,12 @@ export interface DrawAssetOptions {
   hideLabel?: boolean;
 }
 
-export const drawAsset = (c: CanvasRenderingContext2D, def: AssetDef, w: number, h: number, { color, label, hideLabel }: DrawAssetOptions) => {
+export const drawAsset = (c: CanvasRenderingContext2D, def: AssetDef, width: number, height: number, { color, label, hideLabel }: DrawAssetOptions) => {
   c.save();
+  // Draw at design size, scaled to the shape's size
+  const k = designScale(def, width, height);
+  c.scale(k, k);
+  const w = width / k, h = height / k;
   c.lineJoin = "round";
   c.lineCap = "round";
   c.lineWidth = 2;
@@ -233,7 +251,7 @@ export const drawAsset = (c: CanvasRenderingContext2D, def: AssetDef, w: number,
 
   const text = label ?? def.name;
   if (!hideLabel && text) {
-    const box = labelBox(def, w, h);
+    const box = designLabelBox(def, w, h);
     c.fillStyle = def.outline === "note" ? "#1f2023" : INK;
     c.textAlign = box.align ?? "center";
     c.textBaseline = "middle";
