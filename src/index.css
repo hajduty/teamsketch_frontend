@@ -5,6 +5,7 @@
 
     /* Surfaces, darkest to lightest */
     --color-canvas: #0b0b0b;      /* drawing area */
+    --color-field: #18191c;       /* inputs, toggles and wells inside panels */
     --color-surface: #1f2024;     /* floating islands, menus, dialogs */
     --color-raised: #2a2c31;      /* hover / pressed / inputs */
     --color-line: #33353b;        /* hairline borders */

@@ -114,7 +114,7 @@ export const DeletePopup = ({
             </div>
           </div>
 
-          <div className="bg-canvas/60 rounded p-3 space-y-1 text-xs">
+          <div className="bg-field/60 rounded p-3 space-y-1 text-xs">
             <p><span className="font-semibold">RoomId:</span> {room.room}</p>
             <p><span className="font-semibold">Role:</span> {room.role}</p>
             <p><span className="font-semibold">Created At:</span> {

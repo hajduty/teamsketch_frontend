@@ -118,7 +118,7 @@ export function Select<T extends string>({ value, options, onChange, label, size
         aria-controls={open ? listId : undefined}
         onClick={() => (open ? close() : openMenu())}
         onKeyDown={onTriggerKeyDown}
-        className={`flex items-center justify-between gap-2 rounded-md border bg-canvas text-ink cursor-pointer transition-colors
+        className={`flex items-center justify-between gap-2 rounded-md border bg-field text-ink cursor-pointer transition-colors
           ${open ? "border-accent" : "border-line-strong hover:border-ink-faint"}
           ${size === "sm" ? "h-8 pl-2.5 pr-1.5 text-xs" : "h-9 pl-3 pr-2 text-sm"} ${className}`}
       >

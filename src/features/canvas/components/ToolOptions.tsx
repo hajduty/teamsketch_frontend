@@ -20,7 +20,7 @@ const Segmented = <T extends string>({ value, options, onChange, disabled, label
   <div
     role="radiogroup"
     aria-label={label}
-    className={`flex w-full p-0.5 gap-0.5 rounded-md bg-canvas border border-line text-xs ${disabled ? "opacity-40 pointer-events-none" : ""}`}
+    className={`flex w-full p-0.5 gap-0.5 rounded-md bg-field border border-line text-xs ${disabled ? "opacity-40 pointer-events-none" : ""}`}
   >
     {options.map(option => (
       <button

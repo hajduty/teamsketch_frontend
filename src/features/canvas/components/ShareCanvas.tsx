@@ -250,7 +250,7 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
                   placeholder="User email"
                   value={userEmail}
                   onChange={(e) => setUserEmail(e.target.value)}
-                  className="flex-1 min-w-0 h-9 rounded-md border border-line-strong bg-canvas px-3 text-sm placeholder:text-ink-faint text-ink outline-none focus:border-accent transition-colors"
+                  className="flex-1 min-w-0 h-9 rounded-md border border-line-strong bg-field px-3 text-sm placeholder:text-ink-faint text-ink outline-none focus:border-accent transition-colors"
                 />
 
                 <Select
@@ -281,7 +281,7 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
                   <div className="flex items-center gap-2">
                     <input
                       readOnly
-                      className="bg-canvas text-ink px-3 h-9 border border-line-strong flex-1 rounded-md text-sm outline-none focus:border-accent"
+                      className="bg-field text-ink px-3 h-9 border border-line-strong flex-1 rounded-md text-sm outline-none focus:border-accent"
                       value={`${window.location.origin}/${roomId}`}
                     />
                     <Button
@@ -319,7 +319,7 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
                     {permissions.map((perm) => (
                       <li
                         key={perm.userEmail}
-                        className="flex justify-between items-center border border-line rounded-md p-2 bg-canvas/60"
+                        className="flex justify-between items-center border border-line rounded-md p-2 bg-field/60"
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-ink">
