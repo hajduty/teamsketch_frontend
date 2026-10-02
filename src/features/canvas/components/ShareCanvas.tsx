@@ -272,7 +272,7 @@ export const ShareCanvas = ({ roomId }: { roomId: string }) => {
 
               {/* Status messages */}
               {error && (
-                <p className="text-red-500 text-sm font-medium">{error}</p>
+                <p className="text-danger text-sm font-medium">{error}</p>
               )}
 
               {successMessage && (

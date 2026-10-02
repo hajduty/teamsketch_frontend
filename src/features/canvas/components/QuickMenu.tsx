@@ -56,7 +56,7 @@ const SimilarShapes: FC<{ point?: { x: number; y: number } | null; targetId?: st
       <div className="h-px bg-line -mx-2" />
       <div className="flex items-center justify-between px-1">
         <span className="text-xs text-ink-faint">{targetId ? "Change to" : "Similar shapes"}</span>
-        <span className="text-xs font-medium" style={{ color: info?.color }}>{info?.name}</span>
+        <span className="text-xs font-medium text-ink-muted">{info?.name}</span>
       </div>
       <div className="grid grid-cols-4 gap-1" role="group" aria-label={`${info?.name} shapes`}>
         {assetsIn(category).map(asset => (

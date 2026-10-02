@@ -149,7 +149,7 @@ const SignIn: React.FC = () => {
               )}
             </button>
 
-            <div className="my-6 flex items-center gap-3 text-xs text-neutral-500">
+            <div className="my-6 flex items-center gap-3 text-xs text-neutral-400">
               <div className="h-px w-full bg-neutral-700"></div>
               or
               <div className="h-px w-full bg-neutral-700"></div>
@@ -166,7 +166,7 @@ const SignIn: React.FC = () => {
             >
               Continue as guest
             </button>
-            <p className="mb-6 text-center text-xs text-neutral-500">
+            <p className="mb-6 text-center text-xs text-neutral-400">
               No account needed. Your canvases are saved on this device.
             </p>
 
