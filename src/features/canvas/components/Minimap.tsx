@@ -35,8 +35,8 @@ export const Minimap: FC<MinimapProps> = ({ stageRef, objects, stageScale, stage
   const width = compact ? MOBILE_WIDTH : WIDTH;
   const height = compact ? MOBILE_HEIGHT : HEIGHT;
 
-  const backgroundColor = useCanvasStore(state => state.stageStates[roomId]?.backgroundColor) ?? "#18191c";
-  const borderColor = useCanvasStore(state => state.stageStates[roomId]?.borderColor) ?? "#2a2c31";
+  const backgroundColor = useCanvasStore(state => state.stageStates[roomId]?.backgroundColor) ?? "#0b0b0b";
+  const borderColor = useCanvasStore(state => state.stageStates[roomId]?.borderColor) ?? "#2a2a2a";
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

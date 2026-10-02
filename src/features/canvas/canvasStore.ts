@@ -89,6 +89,24 @@ interface CanvasActions {
 
 type CanvasStore = CanvasState & CanvasActions;
 
+// Canvas colours when a room hasn't picked its own
+const DEFAULT_BACKGROUND = "#0b0b0b";
+const DEFAULT_GRID = "#2a2a2a";
+// Earlier defaults; rooms only stored them because the saved view included them, so they're
+// switched to the current defaults
+const OLD_DEFAULTS: Record<string, string> = {
+  "#18191c": DEFAULT_BACKGROUND, "#111111": DEFAULT_BACKGROUND,
+  "#2a2c31": DEFAULT_GRID, "#333333": DEFAULT_GRID,
+};
+
+type StageStates = CanvasState["stageStates"];
+const withDarkDefaults = (states: StageStates): StageStates =>
+  Object.fromEntries(Object.entries(states).map(([room, state]) => [room, {
+    ...state,
+    backgroundColor: OLD_DEFAULTS[state.backgroundColor?.toLowerCase()] ?? state.backgroundColor,
+    borderColor: OLD_DEFAULTS[state.borderColor?.toLowerCase()] ?? state.borderColor,
+  }]));
+
 /**
  * Whose library to use: the one the canvas loaded, or else whoever is signed in according to
  * the stored session (so saving never depends on the canvas having loaded it first).
@@ -162,7 +180,7 @@ export const useCanvasStore = create<CanvasStore>(
     })(),
     stageStates: (() => {
       try {
-        return JSON.parse(localStorage.getItem("stageStates") || "{}");
+        return withDarkDefaults(JSON.parse(localStorage.getItem("stageStates") || "{}"));
       } catch {
         return {};
       }
@@ -356,7 +374,7 @@ export const useCanvasStore = create<CanvasStore>(
 
     saveStageState: (roomId: string, updates: Partial<{ x: number; y: number; scale: number; backgroundColor: string, borderColor: string }>) => {
       set(state => {
-        const prevRoomState = state.stageStates[roomId] ?? { scale: 1, backgroundColor: "#18191c", borderColor: "#2a2c31" };
+        const prevRoomState = state.stageStates[roomId] ?? { scale: 1, backgroundColor: DEFAULT_BACKGROUND, borderColor: DEFAULT_GRID };
 
         const updated = {
           ...state.stageStates,

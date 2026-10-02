@@ -200,12 +200,12 @@ export const CanvasOptions = ({ roomId }: { roomId: string }) => {
     <Section>
       <Row label="Background">
         <div className="w-32">
-          <Color onChange={(value: string) => saveStageState(roomId, { backgroundColor: value })} value={stage?.backgroundColor ?? "#18191c"} />
+          <Color onChange={(value: string) => saveStageState(roomId, { backgroundColor: value })} value={stage?.backgroundColor ?? "#0b0b0b"} />
         </div>
       </Row>
       <Row label="Grid lines">
         <div className="w-32">
-          <Color onChange={(value: string) => saveStageState(roomId, { borderColor: value })} value={stage?.borderColor ?? "#2a2c31"} />
+          <Color onChange={(value: string) => saveStageState(roomId, { borderColor: value })} value={stage?.borderColor ?? "#2a2a2a"} />
         </div>
       </Row>
     </Section>

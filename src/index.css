@@ -4,7 +4,7 @@
     --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
 
     /* Surfaces, darkest to lightest */
-    --color-canvas: #18191c;      /* drawing area */
+    --color-canvas: #0b0b0b;      /* drawing area */
     --color-surface: #1f2024;     /* floating islands, menus, dialogs */
     --color-raised: #2a2c31;      /* hover / pressed / inputs */
     --color-line: #33353b;        /* hairline borders */
